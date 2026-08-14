@@ -1,0 +1,50 @@
+name: Sync Upstream & Trigger Build
+
+on:
+  schedule:
+    # Runs every hour at minute 0
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync with Upstream
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Fork Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global url."https://git.opengrind.org/".insteadOf "ssh://git@git.opengrind.org/"
+
+      - name: Fetch Upstream
+        run: |
+          git remote add upstream https://git.opengrind.org/open-grind/open-grind.git || true
+          git fetch upstream main
+
+      - name: Check for new commits and merge
+        id: sync_check
+        run: |
+          UPSTREAM_COMMITS=$(git log HEAD..upstream/main --oneline | wc -l)
+          echo "Found $UPSTREAM_COMMITS new upstream commits."
+          if [ "$UPSTREAM_COMMITS" -gt 0 ]; then
+            echo "Merging upstream/main..."
+            git merge --no-edit -m "chore(sync): sync upstream changes" upstream/main
+            git submodule update --init --recursive
+            git push origin main
+            echo "synced=true" >> $GITHUB_OUTPUT
+          else
+            echo "Already up to date."
+            echo "synced=false" >> $GITHUB_OUTPUT
+          fi
