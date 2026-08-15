@@ -7,6 +7,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build Android APK (Docker)
@@ -60,3 +63,15 @@ jobs:
           name: open-grind-android-signed-debug
           path: ${{ steps.sign_apk.outputs.signed_apk }}
           retention-days: 7
+
+      - name: Publish to GitHub Releases
+        if: github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="v$(date +'%Y.%m.%d')-b${{ github.run_number }}"
+          RELEASE_TITLE="Release $TAG_NAME"
+          gh release create "$TAG_NAME" "${{ steps.sign_apk.outputs.signed_apk }}" \
+            --title "$RELEASE_TITLE" \
+            --generate-notes \
+            --latest
