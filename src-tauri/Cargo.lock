@@ -2065,9 +2065,9 @@ dependencies = [
 
 [[package]]
 name = "grindr"
-version = "0.13.0+26.13.0.170510"
+version = "0.14.0+26.13.0.170510"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6518713dd6ce2c1206e18eabf466893028c8063a84b2be21e2795ef0af68d1fc"
+checksum = "c56a088118c60ae00f1a9f210357651940865bc7e59ef77fb5ce4427421fa271"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -3613,6 +3613,7 @@ dependencies = [
  "tauri-plugin-geolocation",
  "tauri-plugin-opener",
  "tauri-plugin-os",
+ "tauri-plugin-single-instance",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -5663,6 +5664,22 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "tauri-plugin-single-instance"
+version = "2.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3214becf9ef5783c0ae99a3bb25adf5353a7a16ebf53e74b909e29205735c6c"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tauri",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "windows-sys 0.60.2",
+ "zbus",
 ]
 
 [[package]]
