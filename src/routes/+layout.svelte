@@ -15,6 +15,7 @@
 		registerAndroidBackButtonListener,
 	} from "$lib/platform/android-native-bridge";
 	import { blockZoom } from "$lib/platform/block-zoom";
+	import { requestSystemNotificationPermission } from "$lib/platform/notifications";
 	import { isAndroidPlatform } from "$lib/platform/os";
 	import { installScrollGestureBridge } from "$lib/platform/scroll-gesture";
 
@@ -44,6 +45,7 @@
 				console.error("Failed to register back button listener", error);
 			});
 		}
+		requestSystemNotificationPermission();
 		void hydratePreferences().catch((error) => {
 			console.error("Failed to hydrate preferences", error);
 		});

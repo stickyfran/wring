@@ -1,8 +1,13 @@
 package org.opengrind
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.ViewGroup
@@ -11,6 +16,8 @@ import android.webkit.WebView
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -53,6 +60,11 @@ class MainActivity : TauriActivity() {
 		}
 	}
 
+	companion object {
+		private const val NOTIFICATION_CHANNEL_ID = "open_messages"
+		private const val PERMISSION_REQUEST_CODE_NOTIFICATIONS = 1001
+	}
+
 	inner class InsetsInterface {
 		@JavascriptInterface fun top() = insetsTop
 		@JavascriptInterface fun bottom() = insetsBottom
@@ -66,10 +78,88 @@ class MainActivity : TauriActivity() {
 			runOnUiThread { this@MainActivity.moveTaskToBack(true) }
 		}
 	}
+
+	inner class NotificationInterface {
+		@JavascriptInterface
+		fun showNotification(id: Int, title: String, body: String, conversationId: String?) {
+			runOnUiThread {
+				sendNativeNotification(id, title, body, conversationId)
+			}
+		}
+
+		@JavascriptInterface
+		fun requestPermission() {
+			runOnUiThread {
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+					if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+						requestPermissions(
+							arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+							PERMISSION_REQUEST_CODE_NOTIFICATIONS
+						)
+					}
+				}
+			}
+		}
+	}
+
+	private fun createNotificationChannel() {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+			val channel = NotificationChannel(
+				NOTIFICATION_CHANNEL_ID,
+				"Messages",
+				NotificationManager.IMPORTANCE_HIGH
+			).apply {
+				description = "Direct messages notifications"
+				enableLights(true)
+				enableVibration(true)
+			}
+			val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+			notificationManager?.createNotificationChannel(channel)
+		}
+	}
+
+	private fun sendNativeNotification(id: Int, title: String, body: String, conversationId: String?) {
+		val intent = Intent(this, MainActivity::class.java).apply {
+			flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+			if (!conversationId.isNullOrEmpty()) {
+				putExtra("conversationId", conversationId)
+			}
+		}
+		val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+			PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+		} else {
+			PendingIntent.FLAG_UPDATE_CURRENT
+		}
+		val pendingIntent = PendingIntent.getActivity(this, id, intent, flags)
+
+		val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+			.setSmallIcon(R.drawable.ic_launcher_foreground)
+			.setContentTitle(title)
+			.setContentText(body)
+			.setPriority(NotificationCompat.PRIORITY_HIGH)
+			.setDefaults(NotificationCompat.DEFAULT_ALL)
+			.setAutoCancel(true)
+			.setContentIntent(pendingIntent)
+			.build()
+
+		try {
+			NotificationManagerCompat.from(this).notify(id, notification)
+		} catch (_: SecurityException) {
+		}
+	}
 	
 	override fun onCreate(savedInstanceState: Bundle?) {
 		enableEdgeToEdge()
 		Keyring.initializeNdkContext(applicationContext)
+		createNotificationChannel()
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+			if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+				requestPermissions(
+					arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+					PERMISSION_REQUEST_CODE_NOTIFICATIONS
+				)
+			}
+		}
 		pendingWebViewWarning = WebViewSupport.current(
 			context = this,
 			minSupportedMajor = BuildConfig.MIN_SUPPORTED_WEBVIEW_MAJOR,
@@ -117,6 +207,7 @@ class MainActivity : TauriActivity() {
 		webView.settings.setGeolocationEnabled(false)
 		webView.addJavascriptInterface(InsetsInterface(), "__AndroidInsets")
 		webView.addJavascriptInterface(BackInterface(), "__AndroidBack")
+		webView.addJavascriptInterface(NotificationInterface(), "__AndroidNotification")
 		maybeWarnAboutWebView()
 	}
 

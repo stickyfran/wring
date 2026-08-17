@@ -10,6 +10,10 @@ declare global {
 		};
 		__AndroidOnBackGesture?: () => boolean;
 		__AndroidBack?: { moveTaskToBack(): void };
+		__AndroidNotification?: {
+			showNotification(id: number, title: string, body: string, conversationId: string): void;
+			requestPermission(): void;
+		};
 	}
 }
 

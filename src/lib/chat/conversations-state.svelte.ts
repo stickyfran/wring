@@ -11,7 +11,8 @@ import {
 import { onProfileEdit } from "$lib/api/users/profiles";
 import { InboxViewedMarker } from "$lib/chat/inbox-last-viewed.svelte";
 import { applyOptimisticBatch } from "$lib/chat/optimistic-batch";
-import { previewFromMessage } from "$lib/model/messaging/message-preview";
+import { previewFromMessage, previewLabel } from "$lib/model/messaging/message-preview";
+import { showSystemNotification } from "$lib/platform/notifications";
 import { below } from "$lib/util/breakpoints.svelte";
 import { reconciler } from "$lib/util/reconcile";
 import {
@@ -184,10 +185,18 @@ class ConversationsState {
 			isIncoming &&
 			!this.#isActive(conversationId) &&
 			entry &&
-			!entry.data.muted &&
-			!isConversationsListVisible
+			!entry.data.muted
 		) {
-			this.#onIncomingMessage({ message, conversation: entry });
+			const label = previewLabel(previewFromMessage(message)) || "Sent a message";
+			showSystemNotification({
+				title: entry.data.name || "Open",
+				body: label,
+				conversationId,
+			});
+
+			if (!isConversationsListVisible) {
+				this.#onIncomingMessage({ message, conversation: entry });
+			}
 		}
 	}
 

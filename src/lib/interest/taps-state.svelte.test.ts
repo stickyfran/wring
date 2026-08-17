@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { flushSync } from "svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -124,9 +125,26 @@ function tapEvent(senderId: number, recipientId: number) {
 	};
 }
 
+const storageMap = new Map<string, string>();
+const storageMock = {
+	getItem: (k: string) => storageMap.get(k) ?? null,
+	setItem: (k: string, v: string) => storageMap.set(k, String(v)),
+	removeItem: (k: string) => storageMap.delete(k),
+	clear: () => storageMap.clear(),
+	get length() {
+		return storageMap.size;
+	},
+	key: (i: number) => Array.from(storageMap.keys())[i] ?? null,
+};
+Object.defineProperty(globalThis, "localStorage", {
+	value: storageMock,
+	writable: true,
+	configurable: true,
+});
+
 beforeEach(() => {
 	clearAccountCaches();
-	localStorage.clear();
+	storageMock.clear();
 	getReceivedTapsMock.mockReset();
 	markBlockedProfilesUnviewableMock.mockClear();
 	showErrorToastMock.mockReset();
