@@ -1,10 +1,9 @@
 pub mod api;
 mod appearance;
 mod error;
-#[cfg_attr(debug_assertions, allow(dead_code))]
-mod logging;
 pub mod media;
 mod photo;
+mod scroll_phase;
 mod state;
 mod storage;
 
@@ -115,9 +114,6 @@ fn quit_when_closed(window: &tauri::WebviewWindow) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-	#[cfg(not(debug_assertions))]
-	logging::init();
-
 	#[cfg(debug_assertions)]
 	let devtools = tauri_plugin_devtools::init();
 
@@ -175,8 +171,10 @@ pub fn run() {
             api::client::rotate_api_params,
             api::session_recovery::set_app_active,
             api::session_recovery::session_health,
+            scroll_phase::scroll_gesture_capture,
         ])
         .setup(|app| {
+            scroll_phase::install_scroll_gesture_bridge(app.handle());
             let user_agent = format!(
                 "open-grind/{} (+https://opengrind.org/; contact: admin@opengrind.org)",
                 app.package_info().version
@@ -282,6 +280,16 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[test]
+	fn release_builds_discard_every_tracing_event() {
+		let expected = if cfg!(debug_assertions) {
+			tracing::level_filters::LevelFilter::TRACE
+		} else {
+			tracing::level_filters::LevelFilter::OFF
+		};
+		assert_eq!(tracing::level_filters::STATIC_MAX_LEVEL, expected);
+	}
 
 	fn allows(url: &str) -> bool {
 		is_app_url(&tauri::Url::parse(url).unwrap())
