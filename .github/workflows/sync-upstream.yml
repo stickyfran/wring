@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   sync:
@@ -30,11 +31,13 @@ jobs:
 
       - name: Fetch Upstream
         run: |
-          git remote add upstream https://git.opengrind.org/open-grind/open-grind.git || true
+          git remote add upstream https://github.com/VityaSchel/open-grind.git || git remote set-url upstream https://github.com/VityaSchel/open-grind.git
           git fetch upstream main
 
       - name: Check for new commits and merge
         id: sync_check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           UPSTREAM_COMMITS=$(git log HEAD..upstream/main --oneline | wc -l)
           echo "Found $UPSTREAM_COMMITS new upstream commits."
@@ -43,6 +46,8 @@ jobs:
             git merge --no-edit -m "chore(sync): sync upstream changes" upstream/main
             git submodule update --init --recursive
             git push origin main
+            echo "Triggering build-apk.yml..."
+            gh workflow run build-apk.yml || true
             echo "synced=true" >> $GITHUB_OUTPUT
           else
             echo "Already up to date."
