@@ -2,8 +2,8 @@ name: Sync Upstream & Trigger Build
 
 on:
   schedule:
-    # Runs every hour at minute 0
-    - cron: '0 * * * *'
+    # Runs every 12 hours (at 00:00 and 12:00 UTC)
+    - cron: '0 */12 * * *'
   workflow_dispatch:
 
 permissions:
@@ -38,6 +38,7 @@ jobs:
         id: sync_check
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           UPSTREAM_COMMITS=$(git log HEAD..upstream/main --oneline | wc -l)
           echo "Found $UPSTREAM_COMMITS new upstream commits."
@@ -47,7 +48,7 @@ jobs:
             git submodule update --init --recursive
             git push origin main
             echo "Triggering build-apk.yml..."
-            gh workflow run build-apk.yml || true
+            gh workflow run build-apk.yml --ref main || true
             echo "synced=true" >> $GITHUB_OUTPUT
           else
             echo "Already up to date."
