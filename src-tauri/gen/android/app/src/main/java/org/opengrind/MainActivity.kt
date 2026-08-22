@@ -1,5 +1,6 @@
 package org.opengrind
 
+import android.app.DownloadManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -9,6 +10,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.provider.Settings
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
@@ -112,6 +114,32 @@ class MainActivity : TauriActivity() {
 		fun stopBackgroundService() {
 			runOnUiThread {
 				stopBackgroundServiceInternal()
+			}
+		}
+	}
+
+	inner class DownloadInterface {
+		@JavascriptInterface
+		fun download(url: String, filename: String?) {
+			runOnUiThread {
+				try {
+					val uri = Uri.parse(url)
+					val isVideo = url.contains(".mp4") || url.contains("video") || url.contains("/v")
+					val ext = if (isVideo) ".mp4" else ".jpg"
+					val safeFilename = filename?.takeIf { it.isNotBlank() } ?: "open_${System.currentTimeMillis()}$ext"
+					val request = DownloadManager.Request(uri).apply {
+						setTitle(safeFilename)
+						setDescription("Downloading media from Open")
+						setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+						setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeFilename)
+						setAllowedOverMetered(true)
+						setAllowedOverRoaming(true)
+					}
+					val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
+					downloadManager?.enqueue(request)
+				} catch (e: Exception) {
+					e.printStackTrace()
+				}
 			}
 		}
 	}
@@ -249,6 +277,10 @@ class MainActivity : TauriActivity() {
 		webView.addJavascriptInterface(InsetsInterface(), "__AndroidInsets")
 		webView.addJavascriptInterface(BackInterface(), "__AndroidBack")
 		webView.addJavascriptInterface(NotificationInterface(), "__AndroidNotification")
+		webView.addJavascriptInterface(DownloadInterface(), "__AndroidDownload")
+		webView.setDownloadListener { url, _, _, _, _ ->
+			DownloadInterface().download(url, null)
+		}
 		maybeWarnAboutWebView()
 	}
 

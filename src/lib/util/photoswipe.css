@@ -16,3 +16,37 @@
 	stroke: none;
 	filter: drop-shadow(1px 1px 2.5px rgba(79, 79, 79, 0.75));
 }
+
+.pswp__button--download-button {
+	display: flex !important;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	width: 50px !important;
+	height: 50px !important;
+	cursor: pointer !important;
+	pointer-events: auto !important;
+	z-index: 100 !important;
+	opacity: 0.85;
+	transition: opacity 0.2s ease, transform 0.1s ease;
+	user-select: none;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.pswp__button--download-button:hover,
+.pswp__button--download-button:focus,
+.pswp__button--download-button:active {
+	opacity: 1 !important;
+}
+
+.pswp__button--download-button:active {
+	transform: scale(0.9);
+}
+
+.pswp__button--download-button svg {
+	width: 22px !important;
+	height: 22px !important;
+	pointer-events: none !important;
+	fill: #ffffff !important;
+	color: #ffffff !important;
+}

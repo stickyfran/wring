@@ -23,3 +23,9 @@ export function toBase64Url(bytes: Uint8Array): string {
 		.replaceAll("/", "_")
 		.replaceAll("=", "");
 }
+
+export function fromBase64Url(b64url: string): Uint8Array {
+	let b64 = b64url.replaceAll("-", "+").replaceAll("_", "/");
+	while (b64.length % 4 !== 0) b64 += "=";
+	return fromBase64(b64);
+}

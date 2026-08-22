@@ -16,6 +16,7 @@
 	} from "$lib/util/media-dimensions";
 	import {
 		applyPhotoSwipeBackGesture,
+		applyPhotoSwipeDownloadButton,
 		applyPhotoSwipeErrorUi,
 	} from "$lib/util/photoswipe";
 	import LockedMedia from "./LockedMedia.svelte";
@@ -140,6 +141,7 @@
 					(usePlaceholder) => usePlaceholder && image.size !== null,
 				);
 				applyPhotoSwipeBackGesture(lightbox);
+				applyPhotoSwipeDownloadButton(lightbox);
 				lightbox.on("closingAnimationEnd", () => {
 					imageState = { status: "idle" };
 				});

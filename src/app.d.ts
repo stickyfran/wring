@@ -16,6 +16,9 @@ declare global {
 			startBackgroundService?(): void;
 			stopBackgroundService?(): void;
 		};
+		__AndroidDownload?: {
+			download(url: string, filename?: string): void;
+		};
 	}
 }
 

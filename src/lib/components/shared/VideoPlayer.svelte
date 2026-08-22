@@ -1,5 +1,6 @@
 <script lang="ts">
 	import {
+		DownloadSimpleIcon,
 		PauseIcon,
 		PlayIcon,
 		SpeakerSimpleHighIcon,
@@ -10,6 +11,7 @@
 	import type { SvelteMediaTimeRange } from "svelte/elements";
 
 	import { Button } from "$lib/components/ui/button";
+	import { downloadMediaUrl } from "$lib/util/download";
 	import { formatMediaDuration } from "$lib/util/format-time";
 	import VideoScrubber from "./VideoScrubber.svelte";
 
@@ -135,6 +137,17 @@
 				{:else}
 					<SpeakerSimpleHighIcon size={22} weight="fill" />
 				{/if}
+			</Button>
+			<Button
+				variant="outline"
+				size="icon-lg"
+				aria-label="Download video"
+				class="shrink-0 cursor-pointer glass-media-controls"
+				onclick={() => {
+					void downloadMediaUrl(src);
+				}}
+			>
+				<DownloadSimpleIcon size={22} weight="bold" />
 			</Button>
 		</div>
 	{/if}

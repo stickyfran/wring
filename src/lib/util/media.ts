@@ -1,7 +1,7 @@
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
 
 import { demoEnabled, demoMediaUrl } from "$lib/demo";
-import { toBase64Url } from "$lib/util/base64";
+import { fromBase64Url, toBase64Url } from "$lib/util/base64";
 
 const MEDIA_SCHEME = "ogmedia";
 
@@ -41,4 +41,30 @@ export function profileMediaUrl({
 	return proxyMediaUrl(
 		`https://cdns.grindr.com/images/${CDN_VARIANTS[size]}/${mediaHash}`,
 	);
+}
+
+export function extractOriginalMediaUrl(proxiedUrl: string): string {
+	if (!proxiedUrl) return proxiedUrl;
+	if (proxiedUrl.includes("ogmedia.localhost/")) {
+		const parts = proxiedUrl.split("ogmedia.localhost/");
+		const path = parts[1] || "";
+		const payload = path.slice(1);
+		try {
+			const bytes = fromBase64Url(payload);
+			return new TextDecoder().decode(bytes);
+		} catch {
+			return proxiedUrl;
+		}
+	}
+	if (proxiedUrl.startsWith("ogmedia:")) {
+		const path = proxiedUrl.replace(/^ogmedia:\/*/, "");
+		const payload = path.slice(1);
+		try {
+			const bytes = fromBase64Url(payload);
+			return new TextDecoder().decode(bytes);
+		} catch {
+			return proxiedUrl;
+		}
+	}
+	return proxiedUrl;
 }
