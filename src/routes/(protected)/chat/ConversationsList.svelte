@@ -58,6 +58,11 @@
 	const activeTab = $derived(page.url.searchParams.get("tab") ?? "inbox");
 
 	const tabEntries = $derived.by(() => {
+		if (activeTab === "unread") {
+			return conversations.entries.filter(
+				(entry) => entry.data.unreadCount > 0,
+			);
+		}
 		if (activeTab === "favorites") {
 			return conversations.entries.filter((entry) => entry.data.favorite);
 		}

@@ -7,12 +7,23 @@
 	import * as Card from "$lib/components/ui/card";
 	import type { ConversationProfile } from "../conversation-state.svelte";
 
-	let { profile }: { profile: ConversationProfile } = $props();
+	let {
+		profile,
+		isBlocked = false,
+	}: {
+		profile: ConversationProfile;
+		isBlocked?: boolean;
+	} = $props();
 </script>
 
 <a href="/profile/{profile.profileId}" class="flex-1 py-4 ps-0 pe-4">
 	<Card.Header class="flex items-center gap-4 px-0">
-		<Avatar.Root class="size-avatar after:rounded-full">
+		<Avatar.Root
+			class={[
+				"size-avatar after:rounded-full",
+				isBlocked && "ring-2 ring-red-500 rounded-full ring-offset-1",
+			]}
+		>
 			<UserAvatar
 				mediaHash={profile.mediaHash ?? null}
 				class="size-full *:rounded-full"
@@ -27,9 +38,23 @@
 				]}
 			>
 				<ProfileStatusIndicator onlineUntil={profile.onlineUntil} />
-				<DisplayName name={profile.name} class="truncate" />
+				<DisplayName
+					name={profile.name}
+					class={["truncate", isBlocked && "text-red-500 font-bold dark:text-red-400"]}
+				/>
+				{#if isBlocked}
+					<span
+						class="rounded bg-destructive/20 px-1 py-0.2 text-[10px] font-bold text-destructive uppercase tracking-wider"
+					>
+						Blocked
+					</span>
+				{/if}
 			</Card.Title>
-			{#if profile.distance === null}
+			{#if isBlocked}
+				<Card.Description class="truncate text-destructive font-medium">
+					This user blocked you or chat is unavailable
+				</Card.Description>
+			{:else if profile.distance === null}
 				<Card.Description class="truncate"
 					>Distance unknown</Card.Description
 				>

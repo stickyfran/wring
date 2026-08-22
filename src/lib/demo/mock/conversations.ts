@@ -363,6 +363,7 @@ export function demoConversations({
 					rightNow: "NOT_ACTIVE",
 					onlineUntil: onlineUntilOf(seed),
 					hasUnreadThrob: false,
+					isBlocked: false,
 				},
 			};
 		})

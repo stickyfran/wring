@@ -65,6 +65,13 @@
 </script>
 
 {#snippet titleBadges()}
+	{#if conversation.data.isBlocked}
+		<span
+			class="rounded bg-destructive/20 px-1.5 py-0.5 text-[10px] font-bold text-destructive uppercase tracking-wider"
+		>
+			Blocked
+		</span>
+	{/if}
 	{#if conversation.data.favorite}
 		<FavoriteStar />
 	{/if}
@@ -85,6 +92,7 @@
 {#snippet row()}
 	<ProfileItem
 		{active}
+		isBlocked={conversation.data.isBlocked}
 		avatar={{
 			mediaHash: participant?.primaryMediaHash ?? null,
 			link: participant ? `/profile/${participant.profileId}` : undefined,

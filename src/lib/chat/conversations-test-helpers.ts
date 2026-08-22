@@ -47,6 +47,7 @@ export function conversation(
 			rightNow: "none",
 			onlineUntil: null,
 			hasUnreadThrob: false,
+			isBlocked: false,
 			...overrides,
 		},
 	} as unknown as Conversation;

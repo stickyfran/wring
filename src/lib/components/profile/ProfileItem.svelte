@@ -16,6 +16,7 @@
 		description,
 		actions,
 		control,
+		isBlocked = false,
 		onToggleSelected,
 		onLongPress,
 	}: {
@@ -36,6 +37,7 @@
 		description?: import("svelte").Snippet;
 		actions?: import("svelte").Snippet;
 		control?: import("svelte").Snippet;
+		isBlocked?: boolean;
 		onToggleSelected?: () => void;
 		onLongPress?: () => void;
 	} = $props();
@@ -49,7 +51,12 @@
 
 {#snippet avatarNode()}
 	<Item.Media class="relative translate-y-0! rounded-2xl p-2">
-		<Avatar.Root class="size-20 after:rounded-xl">
+		<Avatar.Root
+			class={[
+				"size-20 after:rounded-xl",
+				isBlocked && "ring-2 ring-red-500 rounded-xl ring-offset-1",
+			]}
+		>
 			<UserAvatar
 				mediaHash={avatar.mediaHash}
 				class="size-20 rounded-xl bg-neutral-700 *:rounded-xl"
@@ -71,7 +78,7 @@
 			<DisplayName
 				name={title.value}
 				fallback={title.fallback}
-				class="truncate"
+				class={["truncate", isBlocked && "text-red-500 font-bold dark:text-red-400"]}
 			/>
 		</Item.Title>
 		{@render description?.()}

@@ -1,12 +1,18 @@
 <script lang="ts">
 	import { ArrowLeftIcon } from "phosphor-svelte";
 
+	import { getConversations } from "$lib/chat/conversations-context.svelte";
 	import ProgressiveBlur from "$lib/components/shared/ProgressiveBlur.svelte";
 	import { Skeleton } from "$lib/components/ui/skeleton";
 	import { getConversationState } from "../conversation-state.svelte";
 	import ConversationNavBarProfile from "./ConversationNavBarProfile.svelte";
 
+	const conversations = getConversations();
 	const conversationState = $derived(getConversationState()());
+	const conversation = $derived(
+		conversations.get(conversationState.conversationId),
+	);
+	const isBlocked = $derived(conversation?.data.isBlocked ?? false);
 </script>
 
 <ProgressiveBlur
@@ -34,6 +40,9 @@
 	{:else if conversationState.error}
 		<span class="flex-1">Failed to load conversation</span>
 	{:else}
-		<ConversationNavBarProfile profile={conversationState.profile} />
+		<ConversationNavBarProfile
+			profile={conversationState.profile}
+			{isBlocked}
+		/>
 	{/if}
 </ProgressiveBlur>

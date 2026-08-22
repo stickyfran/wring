@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from "$app/state";
 	import ChatCircleIcon from "phosphor-svelte/lib/ChatCircleIcon";
+	import ChatDotsIcon from "phosphor-svelte/lib/ChatDotsIcon";
 	import DotsNineIcon from "phosphor-svelte/lib/DotsNineIcon";
 	import FireIcon from "phosphor-svelte/lib/FireIcon";
 	import PushPinIcon from "phosphor-svelte/lib/PushPinIcon";
@@ -26,6 +27,7 @@
 		getOrCreateConversationsState(ourProfileId),
 	);
 	const hasUnreadInbox = $derived(conversations.hasUnreadInbox);
+	const hasUnreadAll = $derived(conversations.hasUnreadAll);
 	const hasUnreadFavorites = $derived(conversations.hasUnreadFavorites);
 	const hasUnreadPinned = $derived(conversations.hasUnreadPinned);
 
@@ -84,6 +86,18 @@
 			<ChatCircleIcon weight="fill" />
 			Inbox
 			{#if hasUnreadInbox}
+				<Badge
+					class="absolute inset-e-2 top-1 size-2.5 rounded-full p-0"
+				/>
+			{/if}
+		</a>
+		<a
+			href="/chat?tab=unread"
+			data-active={isChatRoute && currentChatTab === "unread"}
+		>
+			<ChatDotsIcon weight="fill" />
+			Unread
+			{#if hasUnreadAll}
 				<Badge
 					class="absolute inset-e-2 top-1 size-2.5 rounded-full p-0"
 				/>

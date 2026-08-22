@@ -120,7 +120,11 @@ class ConversationsState {
 				(event) => {
 					if (this.#destroyed) return;
 					for (const id of event.payload.conversationIds) {
-						this.remove(id);
+						const entry = this.#find(id);
+						if (entry) {
+							entry.data.isBlocked = true;
+						}
+						this.drafts.forget(id);
 						this.#markServerDeleted(id);
 					}
 				},
@@ -249,7 +253,10 @@ class ConversationsState {
 				: oldestFetchedTs;
 			for (const entry of [...this.entries]) {
 				const id = entry.data.conversationId;
-				if (fetched.has(id)) continue;
+				if (fetched.has(id)) {
+					if (entry.data.isBlocked) entry.data.isBlocked = false;
+					continue;
+				}
 				if (
 					this.#pendingDeletes.blocks({
 						conversationId: id,
@@ -257,6 +264,9 @@ class ConversationsState {
 					})
 				)
 					continue;
+				if (entry.data.isBlocked) {
+					continue;
+				}
 				if (entry.data.lastActivityTimestamp > windowFloor) {
 					this.remove(id);
 				}
@@ -450,8 +460,20 @@ class ConversationsState {
 		);
 	}
 
+	get hasUnreadAll(): boolean {
+		return this.entries.some(
+			(entry) => entry.data.unreadCount > 0 && !entry.data.muted,
+		);
+	}
+
 	noteListViewed(): void {
 		this.inboxViewed.noteListViewed(this.entries);
+	}
+
+	get(conversationId: string): Conversation | undefined {
+		return this.entries.find(
+			(entry) => entry.data.conversationId === conversationId,
+		);
 	}
 
 	async markRead(conversationId: string) {

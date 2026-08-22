@@ -58,18 +58,29 @@
 
 	setConversationState(() => conversationState);
 
+	const conversation = $derived(conversations.get(conversationId));
+	const isBlocked = $derived(conversation?.data.isBlocked ?? false);
+
 	let composerHeight = $state(0);
 </script>
 
 <ChatNavBar />
 <Card.Content class="relative flex min-h-0 flex-1 flex-col p-0">
 	<ConversationMessages {composerHeight} />
-	<MessageComposer
-		conversationId={conversationState.conversationId}
-		onSend={(drafts: MessageDraft[]) => conversationState.send(drafts)}
-		disabled={conversationState.loading || conversationState.error !== null}
-		replyTo={conversationState.replyTo}
-		onCancelReply={() => conversationState.clearReplyTo()}
-		bind:height={composerHeight}
-	/>
+	{#if isBlocked}
+		<div
+			class="border-t border-destructive/30 bg-destructive/10 px-4 py-3 text-center text-sm font-medium text-destructive"
+		>
+			This conversation is unavailable because this user blocked you or deleted their account.
+		</div>
+	{:else}
+		<MessageComposer
+			conversationId={conversationState.conversationId}
+			onSend={(drafts: MessageDraft[]) => conversationState.send(drafts)}
+			disabled={conversationState.loading || conversationState.error !== null}
+			replyTo={conversationState.replyTo}
+			onCancelReply={() => conversationState.clearReplyTo()}
+			bind:height={composerHeight}
+		/>
+	{/if}
 </Card.Content>

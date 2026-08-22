@@ -42,6 +42,7 @@ function conversation(conversationId = "conversation-1") {
 			rightNow: "NOT_ACTIVE",
 			onlineUntil: null,
 			hasUnreadThrob: false,
+			isBlocked: false,
 		},
 	};
 }

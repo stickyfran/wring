@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		ChatCircleSlashIcon,
+		CheckCircleIcon,
 		FunnelIcon,
 		PushPinSlashIcon,
 		StarIcon,
@@ -19,11 +20,13 @@
 	const Icon = $derived(
 		filtered
 			? FunnelIcon
-			: tab === "favorites"
-				? StarIcon
-				: tab === "pinned"
-					? PushPinSlashIcon
-					: ChatCircleSlashIcon,
+			: tab === "unread"
+				? CheckCircleIcon
+				: tab === "favorites"
+					? StarIcon
+					: tab === "pinned"
+						? PushPinSlashIcon
+						: ChatCircleSlashIcon,
 	);
 </script>
 
@@ -36,6 +39,11 @@
 			<Empty.Title>No Results</Empty.Title>
 			<Empty.Description>
 				No conversations match these filters.
+			</Empty.Description>
+		{:else if tab === "unread"}
+			<Empty.Title>No Unread Messages</Empty.Title>
+			<Empty.Description>
+				You are all caught up on all conversations.
 			</Empty.Description>
 		{:else if tab === "favorites"}
 			<Empty.Title>No Favorites Yet</Empty.Title>

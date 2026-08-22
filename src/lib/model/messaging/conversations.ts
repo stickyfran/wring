@@ -44,6 +44,7 @@ export const fullConversationSchema = z.object({
 		rightNow: rightNowStatusSchema,
 		onlineUntil: z.number().nullable(),
 		hasUnreadThrob: z.boolean(),
+		isBlocked: z.boolean().default(false),
 	}),
 });
 
