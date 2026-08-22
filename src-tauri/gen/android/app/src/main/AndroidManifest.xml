@@ -3,6 +3,9 @@
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 	<uses-permission android:name="android.permission.VIBRATE" />
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+	<uses-permission android:name="android.permission.WAKE_LOCK" />
 
 	<uses-permission android:name="org.opengrind.google_oauth.permission.REQUEST_TOKEN" />
 
@@ -43,6 +46,11 @@
 				android:name="android.support.FILE_PROVIDER_PATHS"
 				android:resource="@xml/file_paths" />
 		</provider>
+
+		<service
+			android:name=".BackgroundSyncService"
+			android:foregroundServiceType="dataSync"
+			android:exported="false" />
 	</application>
     <!-- ANDROID FS PLUGIN. AUTO-GENERATED. DO NOT REMOVE. -->
     

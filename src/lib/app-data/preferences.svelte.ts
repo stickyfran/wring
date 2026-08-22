@@ -18,6 +18,10 @@ const preferencesSchema = z.object({
 	revealMessageRead: z.boolean().default(false),
 	revealProfileViews: z.boolean().default(false),
 	units: unitSystemSchema.default("metric"),
+	backgroundService: z.boolean().default(true),
+	ntfyEnabled: z.boolean().default(false),
+	ntfyServer: z.string().default("https://ntfy.sh"),
+	ntfyTopic: z.string().default(""),
 });
 
 type Preferences = z.infer<typeof preferencesSchema>;

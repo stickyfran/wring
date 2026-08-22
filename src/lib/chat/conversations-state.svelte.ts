@@ -432,6 +432,24 @@ class ConversationsState {
 		return this.inboxViewed.hasUnreadAmong(this.entries);
 	}
 
+	get hasUnreadInbox(): boolean {
+		return this.inboxViewed.hasUnreadAmong(
+			this.entries.filter((e) => !e.data.pinned && !e.data.favorite),
+		);
+	}
+
+	get hasUnreadFavorites(): boolean {
+		return this.inboxViewed.hasUnreadAmong(
+			this.entries.filter((e) => e.data.favorite),
+		);
+	}
+
+	get hasUnreadPinned(): boolean {
+		return this.inboxViewed.hasUnreadAmong(
+			this.entries.filter((e) => e.data.pinned),
+		);
+	}
+
 	noteListViewed(): void {
 		this.inboxViewed.noteListViewed(this.entries);
 	}

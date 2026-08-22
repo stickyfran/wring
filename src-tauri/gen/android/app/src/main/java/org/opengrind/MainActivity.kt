@@ -100,6 +100,46 @@ class MainActivity : TauriActivity() {
 				}
 			}
 		}
+
+		@JavascriptInterface
+		fun startBackgroundService() {
+			runOnUiThread {
+				startBackgroundServiceInternal()
+			}
+		}
+
+		@JavascriptInterface
+		fun stopBackgroundService() {
+			runOnUiThread {
+				stopBackgroundServiceInternal()
+			}
+		}
+	}
+
+	private fun startBackgroundServiceInternal() {
+		try {
+			val serviceIntent = Intent(this, BackgroundSyncService::class.java).apply {
+				action = BackgroundSyncService.ACTION_START
+			}
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+				startForegroundService(serviceIntent)
+			} else {
+				startService(serviceIntent)
+			}
+		} catch (e: Exception) {
+			e.printStackTrace()
+		}
+	}
+
+	private fun stopBackgroundServiceInternal() {
+		try {
+			val serviceIntent = Intent(this, BackgroundSyncService::class.java).apply {
+				action = BackgroundSyncService.ACTION_STOP
+			}
+			startService(serviceIntent)
+		} catch (e: Exception) {
+			e.printStackTrace()
+		}
 	}
 
 	private fun createNotificationChannel() {
@@ -152,6 +192,7 @@ class MainActivity : TauriActivity() {
 		enableEdgeToEdge()
 		Keyring.initializeNdkContext(applicationContext)
 		createNotificationChannel()
+		startBackgroundServiceInternal()
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
 			if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
 				requestPermissions(

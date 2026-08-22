@@ -6,6 +6,7 @@
 	import { proxyMediaUrl } from "$lib/util/media";
 	import {
 		applyPhotoSwipeBackGesture,
+		applyPhotoSwipeDownloadButton,
 		applyPhotoSwipeErrorUi,
 		applyPhotoSwipeThumbDimensions,
 	} from "$lib/util/photoswipe";
@@ -48,6 +49,7 @@
 				applyPhotoSwipeErrorUi(lightbox);
 				applyPhotoSwipeThumbDimensions(lightbox);
 				applyPhotoSwipeBackGesture(lightbox);
+				applyPhotoSwipeDownloadButton(lightbox);
 
 				const PHOTOSWIPE_PLACEHOLDER_WIDTH_PX = 250;
 

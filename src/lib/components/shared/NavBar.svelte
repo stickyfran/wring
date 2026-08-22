@@ -2,8 +2,9 @@
 	import { page } from "$app/state";
 	import ChatCircleIcon from "phosphor-svelte/lib/ChatCircleIcon";
 	import DotsNineIcon from "phosphor-svelte/lib/DotsNineIcon";
-	import DropIcon from "phosphor-svelte/lib/DropIcon";
 	import FireIcon from "phosphor-svelte/lib/FireIcon";
+	import PushPinIcon from "phosphor-svelte/lib/PushPinIcon";
+	import StarIcon from "phosphor-svelte/lib/StarIcon";
 	import { untrack } from "svelte";
 
 	import { getProfile } from "$lib/api/users/profiles";
@@ -24,10 +25,17 @@
 	const conversations = untrack(() =>
 		getOrCreateConversationsState(ourProfileId),
 	);
-	const hasUnread = $derived(conversations.hasUnread);
+	const hasUnreadInbox = $derived(conversations.hasUnreadInbox);
+	const hasUnreadFavorites = $derived(conversations.hasUnreadFavorites);
+	const hasUnreadPinned = $derived(conversations.hasUnreadPinned);
 
 	const taps = untrack(() => getTapsState(ourProfileId));
 	const hasUnseenTaps = $derived(taps.hasUnseen);
+
+	const isChatRoute = $derived(
+		page.route.id?.startsWith("/(protected)/chat") ?? false,
+	);
+	const currentChatTab = $derived(page.url.searchParams.get("tab") ?? "inbox");
 </script>
 
 <ProgressiveBlur
@@ -56,13 +64,6 @@
 			Browse
 		</a>
 		<a
-			href="/right-now"
-			data-active={page.route.id === "/(protected)/(navbar)/right-now"}
-		>
-			<DropIcon weight="fill" />
-			Right Now
-		</a>
-		<a
 			href="/interest"
 			data-active={page.route.id?.startsWith(
 				"/(protected)/(navbar)/interest",
@@ -76,10 +77,37 @@
 				/>
 			{/if}
 		</a>
-		<a href="/chat" data-active={page.route.id === "/(protected)/chat"}>
+		<a
+			href="/chat"
+			data-active={isChatRoute && currentChatTab === "inbox"}
+		>
 			<ChatCircleIcon weight="fill" />
 			Inbox
-			{#if hasUnread}
+			{#if hasUnreadInbox}
+				<Badge
+					class="absolute inset-e-2 top-1 size-2.5 rounded-full p-0"
+				/>
+			{/if}
+		</a>
+		<a
+			href="/chat?tab=favorites"
+			data-active={isChatRoute && currentChatTab === "favorites"}
+		>
+			<StarIcon weight="fill" />
+			Fav
+			{#if hasUnreadFavorites}
+				<Badge
+					class="absolute inset-e-2 top-1 size-2.5 rounded-full p-0"
+				/>
+			{/if}
+		</a>
+		<a
+			href="/chat?tab=pinned"
+			data-active={isChatRoute && currentChatTab === "pinned"}
+		>
+			<PushPinIcon weight="fill" />
+			Pin
+			{#if hasUnreadPinned}
 				<Badge
 					class="absolute inset-e-2 top-1 size-2.5 rounded-full p-0"
 				/>

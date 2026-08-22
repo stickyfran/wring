@@ -10,11 +10,13 @@
 		hasMore,
 		listEmpty,
 		filtered,
+		tab = "inbox",
 	}: {
 		paging: InboxPaging;
 		hasMore: boolean;
 		listEmpty: boolean;
 		filtered: boolean;
+		tab?: string;
 	} = $props();
 </script>
 
@@ -26,7 +28,7 @@
 			: ""}
 </div>
 {#if listEmpty && !hasMore}
-	<EmptyConversationsList {filtered} />
+	<EmptyConversationsList {filtered} {tab} />
 {/if}
 {#if hasMore}
 	{#if paging.failure}

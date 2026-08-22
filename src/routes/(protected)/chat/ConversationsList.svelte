@@ -55,8 +55,22 @@
 		}
 	}
 
+	const activeTab = $derived(page.url.searchParams.get("tab") ?? "inbox");
+
+	const tabEntries = $derived.by(() => {
+		if (activeTab === "favorites") {
+			return conversations.entries.filter((entry) => entry.data.favorite);
+		}
+		if (activeTab === "pinned") {
+			return conversations.entries.filter((entry) => entry.data.pinned);
+		}
+		return conversations.entries.filter(
+			(entry) => !entry.data.pinned && !entry.data.favorite,
+		);
+	});
+
 	const selectedEntries = $derived(
-		conversations.entries.filter((entry) =>
+		tabEntries.filter((entry) =>
 			selection.has(entry.data.conversationId),
 		),
 	);
@@ -190,7 +204,7 @@
 				<div
 					class="flex min-h-overscrollable shrink-0 flex-col gap-1 pb-nav-clear"
 				>
-					{#each conversations.entries as conversation, i (conversation.data.conversationId)}
+					{#each tabEntries as conversation, i (conversation.data.conversationId)}
 						{@const conversationId =
 							conversation.data.conversationId}
 						{#if i < EAGER_COUNT}
@@ -218,8 +232,9 @@
 					<ConversationsPagingTail
 						paging={conversations.paging}
 						hasMore={conversations.nextPage !== null}
-						listEmpty={conversations.entries.length === 0}
+						listEmpty={tabEntries.length === 0}
 						filtered={conversations.filters.active.length > 0}
+						tab={activeTab}
 					/>
 				</div>
 			{/if}
@@ -232,10 +247,12 @@
 				onrefresh={() => void conversations.refresh()}
 			/>
 		{/if}
-		<ConversationsFilters
-			filters={conversations.filters}
-			onchange={(active) => conversations.setFilters(active)}
-			inert={selecting}
-		/>
+		{#if activeTab === "inbox"}
+			<ConversationsFilters
+				filters={conversations.filters}
+				onchange={(active) => conversations.setFilters(active)}
+				inert={selecting}
+			/>
+		{/if}
 	</div>
 </div>

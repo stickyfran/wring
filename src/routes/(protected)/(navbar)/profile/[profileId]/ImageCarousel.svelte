@@ -8,6 +8,7 @@
 	import { profileMediaUrl } from "$lib/util/media";
 	import {
 		applyPhotoSwipeBackGesture,
+		applyPhotoSwipeDownloadButton,
 		applyPhotoSwipeErrorUi,
 		applyPhotoSwipeThumbDimensions,
 	} from "$lib/util/photoswipe";
@@ -40,6 +41,7 @@
 				applyPhotoSwipeErrorUi(lightbox);
 				applyPhotoSwipeThumbDimensions(lightbox);
 				applyPhotoSwipeBackGesture(lightbox);
+				applyPhotoSwipeDownloadButton(lightbox);
 				lightbox.on("openingAnimationStart", () => {
 					gallery?.querySelectorAll(".item").forEach((item) => {
 						if (item instanceof HTMLElement) {

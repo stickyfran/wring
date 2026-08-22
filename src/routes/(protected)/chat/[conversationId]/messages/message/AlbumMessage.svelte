@@ -17,6 +17,7 @@
 	} from "$lib/util/media-dimensions";
 	import {
 		applyPhotoSwipeBackGesture,
+		applyPhotoSwipeDownloadButton,
 		applyPhotoSwipeErrorUi,
 		applyPhotoSwipeVideo,
 	} from "$lib/util/photoswipe";
@@ -119,11 +120,13 @@
 					};
 				});
 				applyPhotoSwipeBackGesture(lightbox);
-				applyPhotoSwipeVideo(lightbox, (index) => {
+				const videoAt = (index: number) => {
 					const slide = album.content[index];
 					if (!slide?.contentType.startsWith("video/")) return null;
 					return { src: slide.url, poster: slide.coverUrl };
-				});
+				};
+				applyPhotoSwipeVideo(lightbox, videoAt);
+				applyPhotoSwipeDownloadButton(lightbox, videoAt);
 				lightbox.on("closingAnimationEnd", () => {
 					albumState = { status: "idle" };
 				});
