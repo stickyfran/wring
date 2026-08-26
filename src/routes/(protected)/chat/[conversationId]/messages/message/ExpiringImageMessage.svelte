@@ -18,6 +18,7 @@
 		applyPhotoSwipeBackGesture,
 		applyPhotoSwipeDownloadButton,
 		applyPhotoSwipeErrorUi,
+		applyPhotoSwipeViewportSync,
 	} from "$lib/util/photoswipe";
 	import LockedMedia from "./LockedMedia.svelte";
 	import { MessageMediaState } from "./message-media.svelte";
@@ -130,6 +131,7 @@
 					mainClass: `pswp--buttons-visible`,
 				});
 				applyPhotoSwipeErrorUi(lightbox);
+				applyPhotoSwipeViewportSync(lightbox);
 				lightbox.addFilter("numItems", () => 1);
 				lightbox.addFilter("itemData", () => ({
 					src: image.url,

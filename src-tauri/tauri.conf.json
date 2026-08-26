@@ -4,7 +4,7 @@
 	"version": "0.1.0-beta.4-dev",
 	"identifier": "org.opengrind",
 	"build": {
-		"beforeDevCommand": "bunx vite dev",
+		"beforeDevCommand": "bun run patch-deps && bunx vite dev",
 		"devUrl": "http://localhost:1420",
 		"beforeBuildCommand": "bun run build",
 		"frontendDist": "../build"
@@ -49,21 +49,15 @@
 		"linux": {
 			"deb": {
 				"depends": [
-					"libwebkit2gtk-4.1-0",
-					"libgtk-3-0",
 					"libsoup-3.0-0",
 					"librsvg2-2"
 				],
 				"recommends": [
 					"libayatana-appindicator3-1",
 					"gstreamer1.0-plugins-good",
-					"gstreamer1.0-plugins-bad",
 					"gstreamer1.0-libav"
 				]
 			}
-		},
-		"macOS": {
-			"signingIdentity": "tauri-dev"
 		},
 		"windows": {
 			"minimumWebview2Version": "111.0.1661.34",

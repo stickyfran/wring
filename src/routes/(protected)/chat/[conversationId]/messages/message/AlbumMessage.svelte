@@ -8,6 +8,7 @@
 		type AlbumContentResponse,
 		getAlbumContent,
 	} from "$lib/api/messaging/albums";
+	import { albumShares } from "$lib/chat/album-shares.svelte";
 	import MediaImage from "$lib/components/shared/MediaImage.svelte";
 	import { proxyMediaUrl } from "$lib/util/media";
 	import {
@@ -20,14 +21,29 @@
 		applyPhotoSwipeDownloadButton,
 		applyPhotoSwipeErrorUi,
 		applyPhotoSwipeVideo,
+		applyPhotoSwipeViewportSync,
 	} from "$lib/util/photoswipe";
 	import type { AlbumMessage } from "$lib/model/messaging/messages";
+	import { getConversationState } from "../../conversation-state.svelte";
 	import LockedMedia from "./LockedMedia.svelte";
 	import { MessageMediaState } from "./message-media.svelte";
 
 	let { message }: { message: AlbumMessage["body"] } = $props();
 
 	const media = new MessageMediaState();
+	const conversationState = $derived(getConversationState()());
+	const peerProfileId = $derived(
+		conversationState.profile?.profileId ?? null,
+	);
+	const isViewable = $derived.by(() => {
+		if (peerProfileId === null) return message.isViewable;
+		return (
+			albumShares.isSharedWith({
+				albumId: message.albumId,
+				profileId: peerProfileId,
+			}) ?? message.isViewable
+		);
+	});
 
 	const className: import("svelte/elements").ClassValue = $derived([
 		"aspect-3/4 h-auto relative",
@@ -109,6 +125,7 @@
 					mainClass: `pswp--buttons-visible`,
 				});
 				applyPhotoSwipeErrorUi(lightbox);
+				applyPhotoSwipeViewportSync(lightbox);
 				lightbox.addFilter("numItems", () => album.content.length);
 				lightbox.addFilter("itemData", (itemData, index) => {
 					const slide = album.content[index];
@@ -146,7 +163,7 @@
 	});
 </script>
 
-{#if message.isViewable}
+{#if isViewable}
 	<button
 		class={[
 			className,
@@ -197,7 +214,11 @@
 		{@render media.adornments?.()}
 	</button>
 {:else}
-	<div class={[className, contentClass]} {@attach media.attach}>
+	<div
+		data-slot="locked-album"
+		class={[className, contentClass]}
+		{@attach media.attach}
+	>
 		<LockedMedia class={media.cornerClass} />
 		{@render media.adornments?.()}
 	</div>

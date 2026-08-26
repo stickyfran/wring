@@ -1,6 +1,17 @@
-import { albumShareRequestSchema } from "$lib/model/messaging/albums";
+import {
+	albumShareRequestSchema,
+	albumUnshareRequestSchema,
+} from "$lib/model/messaging/albums";
+import { accountPreferencesUpdateSchema } from "$lib/model/settings/account";
+import type { FavoriteNote } from "$lib/model/users/favorites";
 import { demoMeProfileId } from "./config";
-import { demoAlbumContent, demoMyAlbums, demoShareAlbum } from "./mock/albums";
+import {
+	demoAlbumContent,
+	demoAlbumShares,
+	demoMyAlbums,
+	demoShareAlbum,
+	demoUnshareAlbum,
+} from "./mock/albums";
 import { demoBlockedUsers, demoSetBlocked } from "./mock/blocks";
 import {
 	demoConversationMessages,
@@ -12,7 +23,13 @@ import {
 	demoSetConversationPinned,
 	demoSingleMessage,
 } from "./mock/conversations";
-import { demoSetFavorite } from "./mock/favorites";
+import {
+	demoDeleteFavoriteNote,
+	demoFavoriteNoteOf,
+	demoFavoriteNotes,
+	demoSetFavorite,
+	demoSetFavoriteNote,
+} from "./mock/favorites";
 import {
 	buildFullProfile,
 	buildMaskedProfile,
@@ -30,6 +47,10 @@ import {
 import { demoReceivedTaps, demoViews } from "./mock/interest";
 import { profileSeed } from "./mock/profiles";
 import { demoGenders, demoPronouns, demoTags } from "./mock/reference";
+import {
+	demoAccountPreferences,
+	demoSetAccountPreferences,
+} from "./mock/settings";
 
 type DemoResponse = { status: number; body: unknown };
 
@@ -153,6 +174,31 @@ export function demoRoute({
 		});
 		return ok({});
 	}
+	if (method === "GET" && rawPath === "/v1/favorites/notes")
+		return ok(demoFavoriteNotes());
+	if (
+		segments.length === 4 &&
+		segments[0] === "v1" &&
+		segments[1] === "favorites" &&
+		segments[2] === "notes"
+	) {
+		const profileId = Number(segments[3]);
+		if (method === "GET")
+			return ok({
+				counterpartyId: profileId,
+				...demoFavoriteNoteOf({ profileId }),
+			});
+		if (method === "PUT") {
+			const { notes = "", phoneNumber = "" } = (body ??
+				{}) as Partial<FavoriteNote>;
+			demoSetFavoriteNote({ profileId, note: { notes, phoneNumber } });
+			return { status: 204, body: null };
+		}
+		if (method === "DELETE") {
+			demoDeleteFavoriteNote({ profileId });
+			return ok({});
+		}
+	}
 	if (method === "POST" && rawPath === "/v4/inbox") {
 		const filters = body as { favoritesOnly?: boolean } | undefined;
 		return ok(
@@ -195,6 +241,29 @@ export function demoRoute({
 	) {
 		const { profiles } = albumShareRequestSchema.parse(body);
 		demoShareAlbum({
+			albumId: Number(segments[2]),
+			profileIds: profiles.map((profile) => profile.profileId),
+		});
+		return ok({});
+	}
+	if (
+		method === "GET" &&
+		segments[0] === "v1" &&
+		segments[1] === "albums" &&
+		segments[3] === "shares" &&
+		segments.length === 4
+	) {
+		return ok({ profileIds: demoAlbumShares(Number(segments[2])) });
+	}
+	if (
+		method === "PUT" &&
+		segments[0] === "v1" &&
+		segments[1] === "albums" &&
+		segments[3] === "unshares" &&
+		segments.length === 4
+	) {
+		const { profiles } = albumUnshareRequestSchema.parse(body);
+		demoUnshareAlbum({
 			albumId: Number(segments[2]),
 			profileIds: profiles.map((profile) => profile.profileId),
 		});
@@ -249,6 +318,15 @@ export function demoRoute({
 	}
 	if (method === "GET" && rawPath === "/v3/places/search") {
 		return ok({ places: [] });
+	}
+	if (rawPath === "/v3/me/prefs/settings") {
+		if (method === "PUT") {
+			demoSetAccountPreferences(
+				accountPreferencesUpdateSchema.parse(body).settings,
+			);
+			return ok({});
+		}
+		return ok(demoAccountPreferences());
 	}
 
 	return ok({});

@@ -41,6 +41,10 @@
 	--message-bubble-in: oklch(0.7882 0.1455 228.36);
 	--message-bubble-out: oklch(0.8618 0.1973 89.76);
 	--list-rail: 117px;
+	--safe-area-top: 0px;
+	--safe-area-bottom: 0px;
+	--safe-area-left: 0px;
+	--safe-area-right: 0px;
 }
 
 @theme inline {
@@ -338,6 +342,8 @@ a {
 
 [data-sonner-toaster] {
 	font-family: var(--font-sans) !important;
+	/* bits-ui modal dialogs set body { pointer-events: none }; toasts must stay tappable */
+	pointer-events: auto;
 }
 
 .toast[data-styled="true"] {
@@ -357,7 +363,7 @@ a {
 }
 
 @media not (max-width: 600px) {
-	.incoming-message-toast[data-sonner-toast] {
+	[data-sonner-toast][data-styled="false"] {
 		width: var(--width);
 	}
 }

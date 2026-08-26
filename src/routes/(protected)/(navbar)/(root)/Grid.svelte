@@ -49,6 +49,13 @@
 	$effect.pre(() => {
 		gridState.load(geohash);
 	});
+
+	$effect(() => {
+		gridState.viewActive = true;
+		return () => {
+			gridState.viewActive = false;
+		};
+	});
 </script>
 
 <div class="relative flex flex-1 flex-col">
@@ -107,7 +114,9 @@
 		{/if}
 	</div>
 	<div role="status" class="sr-only">
-		{gridState.loadingMore ? "Loading more profiles" : ""}
+		{#if gridState.loadingMore}
+			Loading more profiles
+		{/if}
 	</div>
 	{#if gridState.nextPage !== 0 && gridState.nextPage !== null}
 		<div

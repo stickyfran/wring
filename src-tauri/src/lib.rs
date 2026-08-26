@@ -1,4 +1,5 @@
 pub mod api;
+mod app_settings;
 mod appearance;
 mod error;
 pub mod media;
@@ -22,6 +23,7 @@ const MIN_CHROMIUM_MAJOR: u32 = 111;
 #[cfg(target_os = "linux")]
 const MIN_WEBKITGTK: (u32, u32) = (2, 42);
 
+#[cfg(desktop)]
 const MAIN_WINDOW_LABEL: &str = "main";
 
 const OPEN_GRIND_PLATFORM: &str = if cfg!(target_os = "android") {
@@ -114,7 +116,9 @@ fn quit_when_closed(window: &tauri::WebviewWindow) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-	#[cfg(debug_assertions)]
+	api::update::enforce_home();
+
+	#[cfg(feature = "devtools")]
 	let devtools = tauri_plugin_devtools::init();
 
 	let builder = tauri::Builder::default();
@@ -132,7 +136,7 @@ pub fn run() {
 		},
 	));
 
-	#[cfg(debug_assertions)]
+	#[cfg(feature = "devtools")]
 	let builder = builder.plugin(devtools);
 
 	#[cfg(target_os = "android")]
@@ -149,6 +153,8 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(api::google_oauth::plugin())
+        .plugin(api::update::plugin())
+        .plugin(app_settings::plugin())
         .manage(AppState {
             client: OnceLock::new(),
         })
@@ -172,6 +178,19 @@ pub fn run() {
             api::session_recovery::set_app_active,
             api::session_recovery::session_health,
             scroll_phase::scroll_gesture_capture,
+            api::update::commands::update_capability,
+            api::update::commands::update_settings,
+            api::update::commands::update_set_auto_check,
+            api::update::commands::update_check,
+            api::update::commands::update_download,
+            api::update::commands::update_cancel_download,
+            api::update::commands::update_progress,
+            api::update::commands::update_readiness,
+            api::update::commands::update_install,
+            api::update::commands::update_take_install_outcome,
+            api::update::commands::update_open_install_permission_settings,
+            api::update::commands::update_discard,
+            app_settings::open_app_settings,
         ])
         .setup(|app| {
             scroll_phase::install_scroll_gesture_bridge(app.handle());
@@ -218,29 +237,65 @@ pub fn run() {
 
             let device = DeviceStorage::load_or_create();
 
-            let session = match AuthStorage::get_session() {
-                Ok(s) => s,
+            let credentials = match AuthStorage::get_credentials() {
+                Ok(c) => c,
                 Err(e) => {
-                    tracing::warn!("[setup] could not load session: {e}");
+                    tracing::warn!("[setup] could not load credentials: {e}");
                     None
                 }
             };
 
-            let client =
-                grindr::GrindrClient::new(device, session).expect("failed to build GrindrClient");
+            let resumed = credentials.clone().map(|credentials| grindr::Session {
+                credentials,
+                token: None,
+            });
+            let client = grindr::GrindrClient::new(device, resumed)
+                .expect("failed to build GrindrClient");
 
             {
                 let mut session_rx = client.session_receiver();
+                let mut stored = credentials;
+                let mut restriction = None;
+                let handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
                     while session_rx.changed().await.is_ok() {
-                        match session_rx.borrow().as_ref() {
-                            Some(s) => {
-                                if let Err(e) = AuthStorage::set_session(s) {
+                        let (next, next_restriction) = {
+                            let session = session_rx.borrow();
+                            (
+                                session
+                                    .as_ref()
+                                    .map(|session| session.credentials.clone()),
+                                session.as_ref().and_then(|session| {
+                                    session.token.as_ref()?.restriction.clone()
+                                }),
+                            )
+                        };
+
+                        if next_restriction != restriction {
+                            if let Some(r) = &next_restriction {
+                                use tauri::Emitter;
+                                handle
+                                    .emit(
+                                        "auth:restriction",
+                                        api::auth::Restriction::from(r.clone()),
+                                    )
+                                    .ok();
+                            }
+                            restriction = next_restriction;
+                        }
+
+                        if next == stored {
+                            continue;
+                        }
+                        match &next {
+                            Some(c) => {
+                                if let Err(e) = AuthStorage::set_credentials(c) {
                                     tracing::error!("[session] persist failed: {e}");
                                 }
                             }
-                            None => AuthStorage::delete_session(),
+                            None => AuthStorage::delete_credentials(),
                         }
+                        stored = next;
                     }
                 });
             }

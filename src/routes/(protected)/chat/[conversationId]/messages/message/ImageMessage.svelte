@@ -9,6 +9,7 @@
 		applyPhotoSwipeDownloadButton,
 		applyPhotoSwipeErrorUi,
 		applyPhotoSwipeThumbDimensions,
+		applyPhotoSwipeViewportSync,
 	} from "$lib/util/photoswipe";
 	import type { ImageMessage } from "$lib/model/messaging/messages";
 	import type { MediaDimensions } from "$lib/util/media-dimensions";
@@ -48,6 +49,7 @@
 				});
 				applyPhotoSwipeErrorUi(lightbox);
 				applyPhotoSwipeThumbDimensions(lightbox);
+				applyPhotoSwipeViewportSync(lightbox);
 				applyPhotoSwipeBackGesture(lightbox);
 				applyPhotoSwipeDownloadButton(lightbox);
 
