@@ -20,13 +20,11 @@
 		poster,
 		onready,
 		onfail,
-		autoplay,
 	}: {
 		src: string;
 		poster: string | null;
 		onready?: () => void;
 		onfail?: () => void;
-		autoplay?: boolean;
 	} = $props();
 
 	let paused = $state(true);
@@ -92,7 +90,6 @@
 		class="size-full object-contain"
 		onloadeddata={onready}
 		onerror={onfail}
-		{autoplay}
 	></video>
 	{#if controlsVisible}
 		<div

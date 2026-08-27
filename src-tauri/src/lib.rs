@@ -170,6 +170,7 @@ pub fn run() {
             api::auth::auth_state,
             api::auth::account_restriction,
             api::auth::recaptcha_first_party_enabled,
+            storage::storage_backend,
             api::rest::request,
             api::media_upload::upload_chat_media,
             api::ws::ws_connect,
@@ -231,9 +232,9 @@ pub fn run() {
                 target_os = "linux",
                 all(target_os = "macos", not(feature = "keychain"))
             ))]
-            storage::init_file_store(app.path().app_data_dir()?);
+            storage::init_file_store(app.path().app_local_data_dir()?);
 
-            storage::init_keyring();
+            app.manage(storage::init_keyring());
 
             let device = DeviceStorage::load_or_create();
 
