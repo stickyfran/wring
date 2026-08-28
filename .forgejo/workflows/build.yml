@@ -35,7 +35,7 @@ env:
     || format('["{0}"]', inputs.providers)) }}
   ARM_BOXES: >-
     ${{ inputs.arm_providers == 'none' && '[]'
-    || (inputs.arm_providers == 'all' && '["hetzner","scaleway","gcore"]'
+    || (inputs.arm_providers == 'all' && '["scaleway","gcore"]'
     || format('["{0}"]', inputs.arm_providers)) }}
 
 jobs:
@@ -67,7 +67,7 @@ jobs:
           cd "$BUILD_ROOT"
           git init -q .
           git remote add origin "$FORGEJO_SERVER_URL/$FORGEJO_REPOSITORY.git"
-          git fetch --depth 1 origin "$FORGEJO_REF_NAME"
+          git fetch -q --depth 1 origin "$FORGEJO_REF_NAME"
           git checkout -q "$FORGEJO_SHA"
           git -c url."$FORGEJO_SERVER_URL/".insteadOf="ssh://git@git.opengrind.org/" \
             submodule update --init --recursive
@@ -76,7 +76,7 @@ jobs:
           ALLOW_DEV: ${{ inputs.allow_dev }}
         run: cd "${BUILD_ROOT:?}" && sh ci/check-release-version.sh
       - name: Set up the build environment
-        run: cd "${BUILD_ROOT:?}" && sh ci/setup-build.sh
+        run: cd "${BUILD_ROOT:?}" && sh ci/setup-build.sh nix
       - name: Build
         run: cd "${BUILD_ROOT:?}" && nix run .#build-android
       - name: Collect APK
@@ -114,7 +114,7 @@ jobs:
           ${{ fromJson(inputs.providers == 'all' && '["cherry","vultr","hetzner"]'
           || format('["{0}"]', inputs.providers)) }}
     runs-on: ["build", "${{ matrix.provider }}"]
-    timeout-minutes: 45
+    timeout-minutes: 30
     env:
       BUILD_ROOT: /work-linux
       TZ: UTC
@@ -128,7 +128,7 @@ jobs:
           cd "$BUILD_ROOT"
           git init -q .
           git remote add origin "$FORGEJO_SERVER_URL/$FORGEJO_REPOSITORY.git"
-          git fetch --depth 1 origin "$FORGEJO_REF_NAME"
+          git fetch -q --depth 1 origin "$FORGEJO_REF_NAME"
           git checkout -q "$FORGEJO_SHA"
           git -c url."$FORGEJO_SERVER_URL/".insteadOf="ssh://git@git.opengrind.org/" \
             submodule update --init --recursive
@@ -137,7 +137,7 @@ jobs:
           ALLOW_DEV: ${{ inputs.allow_dev }}
         run: cd "${BUILD_ROOT:?}" && sh ci/check-release-version.sh
       - name: Set up the build environment
-        run: cd "${BUILD_ROOT:?}" && sh ci/setup-build.sh
+        run: cd "${BUILD_ROOT:?}" && sh ci/setup-build.sh podman
       - name: Build
         run: |
           cd "${BUILD_ROOT:?}"
@@ -165,10 +165,10 @@ jobs:
       fail-fast: false
       matrix:
         provider: >-
-          ${{ fromJson(inputs.arm_providers == 'all' && '["hetzner","scaleway","gcore"]'
+          ${{ fromJson(inputs.arm_providers == 'all' && '["scaleway","gcore"]'
           || format('["{0}"]', inputs.arm_providers)) }}
     runs-on: ["build-arm64", "${{ matrix.provider }}"]
-    timeout-minutes: 60
+    timeout-minutes: 40
     env:
       BUILD_ROOT: /work-linux
       TZ: UTC
@@ -182,7 +182,7 @@ jobs:
           cd "$BUILD_ROOT"
           git init -q .
           git remote add origin "$FORGEJO_SERVER_URL/$FORGEJO_REPOSITORY.git"
-          git fetch --depth 1 origin "$FORGEJO_REF_NAME"
+          git fetch -q --depth 1 origin "$FORGEJO_REF_NAME"
           git checkout -q "$FORGEJO_SHA"
           git -c url."$FORGEJO_SERVER_URL/".insteadOf="ssh://git@git.opengrind.org/" \
             submodule update --init --recursive
@@ -191,7 +191,7 @@ jobs:
           ALLOW_DEV: ${{ inputs.allow_dev }}
         run: cd "${BUILD_ROOT:?}" && sh ci/check-release-version.sh
       - name: Set up the build environment
-        run: cd "${BUILD_ROOT:?}" && sh ci/setup-build.sh
+        run: cd "${BUILD_ROOT:?}" && sh ci/setup-build.sh podman
       - name: Build
         run: |
           cd "${BUILD_ROOT:?}"
@@ -222,7 +222,7 @@ jobs:
           ${{ fromJson(inputs.providers == 'all' && '["cherry","vultr","hetzner"]'
           || format('["{0}"]', inputs.providers)) }}
     runs-on: ["build", "${{ matrix.provider }}"]
-    timeout-minutes: 60
+    timeout-minutes: 25
     env:
       BUILD_ROOT: /work-windows
       HOME: /root
@@ -238,7 +238,7 @@ jobs:
           cd "$BUILD_ROOT"
           git init -q .
           git remote add origin "$FORGEJO_SERVER_URL/$FORGEJO_REPOSITORY.git"
-          git fetch --depth 1 origin "$FORGEJO_REF_NAME"
+          git fetch -q --depth 1 origin "$FORGEJO_REF_NAME"
           git checkout -q "$FORGEJO_SHA"
           git -c url."$FORGEJO_SERVER_URL/".insteadOf="ssh://git@git.opengrind.org/" \
             submodule update --init --recursive
@@ -247,7 +247,7 @@ jobs:
           ALLOW_DEV: ${{ inputs.allow_dev }}
         run: cd "${BUILD_ROOT:?}" && sh ci/check-release-version.sh
       - name: Set up the build environment
-        run: cd "${BUILD_ROOT:?}" && sh ci/setup-build.sh
+        run: cd "${BUILD_ROOT:?}" && sh ci/setup-build.sh nix
       - name: Build
         run: cd "${BUILD_ROOT:?}" && sh ci/windows/build.sh x64
       - name: Collect installers
@@ -275,7 +275,7 @@ jobs:
           ${{ fromJson(inputs.providers == 'all' && '["cherry","vultr","hetzner"]'
           || format('["{0}"]', inputs.providers)) }}
     runs-on: ["build", "${{ matrix.provider }}"]
-    timeout-minutes: 60
+    timeout-minutes: 25
     env:
       BUILD_ROOT: /work-windows
       HOME: /root
@@ -291,7 +291,7 @@ jobs:
           cd "$BUILD_ROOT"
           git init -q .
           git remote add origin "$FORGEJO_SERVER_URL/$FORGEJO_REPOSITORY.git"
-          git fetch --depth 1 origin "$FORGEJO_REF_NAME"
+          git fetch -q --depth 1 origin "$FORGEJO_REF_NAME"
           git checkout -q "$FORGEJO_SHA"
           git -c url."$FORGEJO_SERVER_URL/".insteadOf="ssh://git@git.opengrind.org/" \
             submodule update --init --recursive
@@ -300,7 +300,7 @@ jobs:
           ALLOW_DEV: ${{ inputs.allow_dev }}
         run: cd "${BUILD_ROOT:?}" && sh ci/check-release-version.sh
       - name: Set up the build environment
-        run: cd "${BUILD_ROOT:?}" && sh ci/setup-build.sh
+        run: cd "${BUILD_ROOT:?}" && sh ci/setup-build.sh nix
       - name: Build
         run: cd "${BUILD_ROOT:?}" && sh ci/windows/build.sh arm64
       - name: Collect installers
