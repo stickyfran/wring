@@ -300,6 +300,40 @@ export class ConversationState {
 		} catch (err) {
 			if (this.#destroyed) return;
 			this.error = err instanceof Error ? err : new Error(String(err));
+			const conv = this.#conversations.get?.(this.conversationId);
+			if (conv) {
+				const participant = conv.data.participants[0];
+				if (participant) {
+					if (!this.profile) {
+						this.profile = {
+							profileId: participant.profileId,
+							name: conv.data.name,
+							mediaHash: participant.primaryMediaHash,
+							distance: participant.distanceMetres,
+							onlineUntil: participant.onlineUntil,
+							showDistance: participant.distanceMetres !== null,
+						};
+					}
+					if (this.messages.length === 0 && conv.data.preview?.text) {
+						this.messages = [
+							{
+								messageId: `preview-${this.conversationId}`,
+								conversationId: this.conversationId,
+								senderId: participant.profileId,
+								timestamp: conv.data.lastActivityTimestamp,
+								unsent: false,
+								reactions: [],
+								dynamic: {},
+								chat1Type: null,
+								replyPreview: null,
+								type: "Text",
+								body: { text: conv.data.preview.text },
+								status: "sent",
+							} as OptimisticMessage,
+						];
+					}
+				}
+			}
 		} finally {
 			this.loading = false;
 			this.#runRequestedRefresh();

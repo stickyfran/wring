@@ -190,11 +190,11 @@
 		onscroll={onContainerScroll}
 		onscrollend={onContainerScrollEnd}
 	>
-		{#if conversationState.loading}
+		{#if conversationState.loading && conversationState.messages.length === 0}
 			{#key conversationState.conversationId}
 				<MessagesListSkeleton />
 			{/key}
-		{:else if conversationState.error}
+		{:else if conversationState.error && conversationState.messages.length === 0}
 			<ConversationError />
 		{:else}
 			<div
@@ -208,7 +208,7 @@
 			</div>
 		{/if}
 	</div>
-	{#if !conversationState.loading && !conversationState.error}
+	{#if !conversationState.loading && conversationState.messages.length > 0}
 		<DataRefreshControl
 			bind:this={refreshControl}
 			{container}
