@@ -1,4 +1,6 @@
 import { getPreferencesSnapshot } from "$lib/app-data/preferences.svelte";
+import type { Conversation } from "$lib/model/messaging/conversations";
+import type { ApiResponseMessage } from "$lib/model/messaging/messages";
 
 export async function sendNtfyPush({
 	title,
@@ -69,6 +71,62 @@ export function showSystemNotification({
 	void sendNtfyPush({ title, body, conversationId });
 }
 
+export function showSystemNotificationForMessage({
+	message,
+	conversation,
+}: {
+	message: ApiResponseMessage;
+	conversation: Conversation;
+}): void {
+	if (conversation.data.muted) return;
+
+	const senderName = conversation.data.name || "Someone";
+	let bodyText = "New message";
+
+	if (message.type === "Text" && typeof message.body?.text === "string") {
+		bodyText = message.body.text;
+	} else {
+		switch (message.type) {
+			case "Image":
+			case "ExpiringImage":
+				bodyText = "📷 Photo";
+				break;
+			case "Album":
+			case "ExpiringAlbum":
+			case "ExpiringAlbumV2":
+				bodyText = "📁 Album";
+				break;
+			case "Video":
+			case "NonExpiringVideo":
+			case "PrivateVideo":
+				bodyText = "🎥 Video";
+				break;
+			case "Audio":
+				bodyText = "🎤 Voice message";
+				break;
+			case "Location":
+				bodyText = "📍 Location";
+				break;
+			case "Giphy":
+			case "Gaymoji":
+				bodyText = "Sticker";
+				break;
+			default:
+				if (conversation.data.preview?.text) {
+					bodyText = conversation.data.preview.text;
+				} else {
+					bodyText = "Sent you a message";
+				}
+		}
+	}
+
+	showSystemNotification({
+		title: senderName,
+		body: bodyText,
+		conversationId: conversation.data.conversationId,
+	});
+}
+
 export function requestSystemNotificationPermission(): void {
 	if (typeof window !== "undefined" && window.__AndroidNotification) {
 		window.__AndroidNotification.requestPermission();
@@ -95,4 +153,14 @@ export function syncBackgroundServiceState(): void {
 	} else {
 		window.__AndroidNotification.stopBackgroundService?.();
 	}
+}
+
+export function requestIgnoreBatteryOptimizations(): void {
+	if (typeof window === "undefined" || !window.__AndroidNotification) return;
+	window.__AndroidNotification.requestIgnoreBatteryOptimizations?.();
+}
+
+export function openNotificationSettings(): void {
+	if (typeof window === "undefined" || !window.__AndroidNotification) return;
+	window.__AndroidNotification.openNotificationSettings?.();
 }

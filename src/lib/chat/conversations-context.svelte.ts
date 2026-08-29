@@ -2,6 +2,7 @@ import { createContext } from "svelte";
 
 import { accountScoped } from "$lib/api/account-caches";
 import { showIncomingMessageToast } from "$lib/components/incoming-message-toast/incoming-message-toast-manager";
+import { showSystemNotificationForMessage } from "$lib/platform/notifications";
 import { ConversationsState } from "./conversations-state.svelte";
 
 export const [getConversations, setConversations] =
@@ -11,7 +12,7 @@ export const getOrCreateConversationsState = accountScoped(
 	(profileId) =>
 		new ConversationsState({
 			ourProfileId: profileId,
-			onIncomingMessage: ({ message, conversation }) =>
+			onIncomingMessage: ({ message, conversation }) => {
 				showIncomingMessageToast({
 					message,
 					sender: {
@@ -21,6 +22,11 @@ export const getOrCreateConversationsState = accountScoped(
 								?.primaryMediaHash ?? null,
 					},
 					conversationId: conversation.data.conversationId,
-				}),
+				});
+				showSystemNotificationForMessage({
+					message,
+					conversation,
+				});
+			},
 		}),
 );

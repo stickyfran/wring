@@ -19,7 +19,10 @@
 		registerAndroidBackButtonListener,
 	} from "$lib/platform/android-native-bridge";
 	import { blockZoom } from "$lib/platform/block-zoom";
-	import { requestSystemNotificationPermission } from "$lib/platform/notifications";
+	import {
+		requestSystemNotificationPermission,
+		syncBackgroundServiceState,
+	} from "$lib/platform/notifications";
 	import { isAndroidPlatform } from "$lib/platform/os";
 	import { installScrollGestureBridge } from "$lib/platform/scroll-gesture";
 	import { updatesSelfManaged } from "$lib/updates/capability.svelte";
@@ -52,7 +55,9 @@
 			});
 		}
 		requestSystemNotificationPermission();
-		void hydratePreferences().catch((error: unknown) => {
+		void hydratePreferences().then(() => {
+			syncBackgroundServiceState();
+		}).catch((error: unknown) => {
 			console.error("Failed to hydrate preferences", error);
 		});
 		return releaseZoomBlock;

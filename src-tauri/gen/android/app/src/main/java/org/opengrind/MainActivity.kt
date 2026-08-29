@@ -116,6 +116,45 @@ class MainActivity : TauriActivity() {
 				stopBackgroundServiceInternal()
 			}
 		}
+
+		@JavascriptInterface
+		fun requestIgnoreBatteryOptimizations() {
+			runOnUiThread {
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+					try {
+						val powerManager = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+						if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(packageName)) {
+							val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+								data = Uri.parse("package:$packageName")
+							}
+							startActivity(intent)
+						}
+					} catch (e: Exception) {
+						e.printStackTrace()
+					}
+				}
+			}
+		}
+
+		@JavascriptInterface
+		fun openNotificationSettings() {
+			runOnUiThread {
+				try {
+					val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+						Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+							putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+						}
+					} else {
+						Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+							data = Uri.parse("package:$packageName")
+						}
+					}
+					startActivity(intent)
+				} catch (e: Exception) {
+					e.printStackTrace()
+				}
+			}
+		}
 	}
 
 	inner class DownloadInterface {
@@ -180,6 +219,8 @@ class MainActivity : TauriActivity() {
 				description = "Direct messages notifications"
 				enableLights(true)
 				enableVibration(true)
+				setShowBadge(true)
+				lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
 			}
 			val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
 			notificationManager?.createNotificationChannel(channel)
@@ -204,7 +245,9 @@ class MainActivity : TauriActivity() {
 			.setSmallIcon(R.drawable.ic_launcher_foreground)
 			.setContentTitle(title)
 			.setContentText(body)
+			.setStyle(NotificationCompat.BigTextStyle().bigText(body))
 			.setPriority(NotificationCompat.PRIORITY_HIGH)
+			.setCategory(NotificationCompat.CATEGORY_MESSAGE)
 			.setDefaults(NotificationCompat.DEFAULT_ALL)
 			.setAutoCancel(true)
 			.setContentIntent(pendingIntent)
@@ -213,6 +256,25 @@ class MainActivity : TauriActivity() {
 		try {
 			NotificationManagerCompat.from(this).notify(id, notification)
 		} catch (_: SecurityException) {
+		}
+	}
+
+	override fun onPause() {
+		super.onPause()
+		webViewRef?.resumeTimers()
+	}
+
+	override fun onStop() {
+		super.onStop()
+		webViewRef?.resumeTimers()
+	}
+
+	override fun onNewIntent(intent: Intent) {
+		super.onNewIntent(intent)
+		setIntent(intent)
+		val conversationId = intent.getStringExtra("conversationId")
+		if (!conversationId.isNullOrEmpty()) {
+			webViewRef?.evaluateJavascript("window.location.href = '/chat/${conversationId}'", null)
 		}
 	}
 	

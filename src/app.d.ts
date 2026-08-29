@@ -15,6 +15,8 @@ declare global {
 			requestPermission(): void;
 			startBackgroundService?(): void;
 			stopBackgroundService?(): void;
+			requestIgnoreBatteryOptimizations?(): void;
+			openNotificationSettings?(): void;
 		};
 		__AndroidDownload?: {
 			download(url: string, filename?: string): void;

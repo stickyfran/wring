@@ -6,13 +6,10 @@
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
+	<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+	<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
 	<uses-permission android:name="org.opengrind.google_oauth.permission.REQUEST_TOKEN" />
-
-	<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-	<uses-permission android:name="android.permission.WAKE_LOCK" />
 
 	<queries>
 		<package android:name="org.opengrind.google_oauth" />
