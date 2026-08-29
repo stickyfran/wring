@@ -308,11 +308,13 @@ class MainActivity : TauriActivity() {
 
 	override fun onPause() {
 		super.onPause()
+		webViewRef?.onResume()
 		webViewRef?.resumeTimers()
 	}
 
 	override fun onStop() {
 		super.onStop()
+		webViewRef?.onResume()
 		webViewRef?.resumeTimers()
 	}
 
@@ -383,6 +385,11 @@ class MainActivity : TauriActivity() {
 		super.onWebViewCreate(webView)
 		webViewRef = webView
 		webView.settings.setGeolocationEnabled(false)
+		webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+		webView.settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+			webView.settings.setOffscreenPreRaster(true)
+		}
 		webView.addJavascriptInterface(InsetsInterface(), "__AndroidInsets")
 		webView.addJavascriptInterface(BackInterface(), "__AndroidBack")
 		webView.addJavascriptInterface(NotificationInterface(), "__AndroidNotification")
