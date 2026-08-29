@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { DownloadSimpleIcon } from "phosphor-svelte";
+
+	import { Button } from "$lib/components/ui/button";
+	import { exportProfileData } from "$lib/util/profile-exporter";
 	import EditProfileButton from "./EditProfileButton.svelte";
 	import FavoriteProfileToggle from "./FavoriteProfileToggle.svelte";
 	import ProfileActionsMenu from "./ProfileActionsMenu.svelte";
@@ -32,6 +36,15 @@
 			isFavorite={profile.isFavorite}
 			{onFavorite}
 		/>
-		<ProfileActionsMenu {profileId} {onBlocked} {onHidden} />
+		<Button
+			size="icon-lg"
+			variant="secondary"
+			aria-label="Download profile data and photos"
+			class="size-12"
+			onclick={() => exportProfileData({ profileId, existingProfile: profile })}
+		>
+			<DownloadSimpleIcon class="size-6" />
+		</Button>
+		<ProfileActionsMenu {profileId} {profile} {onBlocked} {onHidden} />
 	{/if}
 </nav>

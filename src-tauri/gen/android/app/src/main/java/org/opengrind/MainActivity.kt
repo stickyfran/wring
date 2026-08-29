@@ -160,22 +160,69 @@ class MainActivity : TauriActivity() {
 	inner class DownloadInterface {
 		@JavascriptInterface
 		fun download(url: String, filename: String?) {
+			downloadToSubdir(url, filename, null)
+		}
+
+		@JavascriptInterface
+		fun downloadToSubdir(url: String, filename: String?, subDir: String?) {
 			runOnUiThread {
 				try {
 					val uri = Uri.parse(url)
 					val isVideo = url.contains(".mp4") || url.contains("video") || url.contains("/v")
 					val ext = if (isVideo) ".mp4" else ".jpg"
 					val safeFilename = filename?.takeIf { it.isNotBlank() } ?: "open_${System.currentTimeMillis()}$ext"
+					val destinationPath = if (!subDir.isNullOrBlank()) {
+						val safeSub = subDir.trim().replace(Regex("[^a-zA-Z0-9_.-]"), "_")
+						"Open/$safeSub/$safeFilename"
+					} else {
+						"Open/$safeFilename"
+					}
 					val request = DownloadManager.Request(uri).apply {
 						setTitle(safeFilename)
 						setDescription("Downloading media from Open")
 						setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-						setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeFilename)
+						setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, destinationPath)
 						setAllowedOverMetered(true)
 						setAllowedOverRoaming(true)
 					}
 					val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
 					downloadManager?.enqueue(request)
+				} catch (e: Exception) {
+					e.printStackTrace()
+				}
+			}
+		}
+
+		@JavascriptInterface
+		fun saveTextFileToSubdir(content: String, filename: String, subDir: String?) {
+			runOnUiThread {
+				try {
+					val safeSub = subDir?.trim()?.replace(Regex("[^a-zA-Z0-9_.-]"), "_")
+					val relativePath = if (!safeSub.isNullOrBlank()) {
+						"Open/$safeSub"
+					} else {
+						"Open"
+					}
+					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+						val values = android.content.ContentValues().apply {
+							put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, filename)
+							put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+							put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/$relativePath")
+						}
+						val resolver = contentResolver
+						val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+						if (uri != null) {
+							resolver.openOutputStream(uri)?.use { outputStream ->
+								outputStream.write(content.toByteArray(Charsets.UTF_8))
+							}
+						}
+					} else {
+						val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+						val targetDir = java.io.File(downloadsDir, relativePath)
+						if (!targetDir.exists()) targetDir.mkdirs()
+						val file = java.io.File(targetDir, filename)
+						file.writeText(content, Charsets.UTF_8)
+					}
 				} catch (e: Exception) {
 					e.printStackTrace()
 				}

@@ -17,12 +17,14 @@
 
 	let {
 		medias,
+		profileId,
 	}: {
 		medias: {
 			mediaHash: string;
 			takenOnGrindr: boolean | null;
 			createdAt: number | null;
 		}[];
+		profileId?: number;
 	} = $props();
 
 	let gallery: HTMLDivElement | null = $state(null);
@@ -43,7 +45,11 @@
 				applyPhotoSwipeThumbDimensions(lightbox);
 				applyPhotoSwipeViewportSync(lightbox);
 				applyPhotoSwipeBackGesture(lightbox);
-				applyPhotoSwipeDownloadButton(lightbox);
+				applyPhotoSwipeDownloadButton(
+					lightbox,
+					undefined,
+					profileId ? String(profileId) : undefined,
+				);
 				lightbox.on("openingAnimationStart", () => {
 					gallery?.querySelectorAll(".item").forEach((item) => {
 						if (item instanceof HTMLElement) {

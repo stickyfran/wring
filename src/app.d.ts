@@ -20,6 +20,8 @@ declare global {
 		};
 		__AndroidDownload?: {
 			download(url: string, filename?: string): void;
+			downloadToSubdir?(url: string, filename?: string, subDir?: string): void;
+			saveTextFileToSubdir?(content: string, filename: string, subDir?: string): void;
 		};
 	}
 }

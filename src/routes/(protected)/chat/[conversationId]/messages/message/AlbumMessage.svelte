@@ -6,7 +6,40 @@
 		content: (AlbumContentResponse["content"][number] & MediaDimensions)[];
 	};
 
-	const albumContentCache = new Map<number, LoadedAlbum>();
+	const ALBUM_CACHE_KEY = "open_cached_albums_v1";
+
+	function loadAlbumsCache(): Map<number, LoadedAlbum> {
+		const map = new Map<number, LoadedAlbum>();
+		if (typeof window === "undefined" || !window.localStorage) return map;
+		try {
+			const raw = localStorage.getItem(ALBUM_CACHE_KEY);
+			if (raw) {
+				const parsed = JSON.parse(raw);
+				if (Array.isArray(parsed)) {
+					for (const item of parsed) {
+						if (Array.isArray(item) && item.length === 2) {
+							map.set(Number(item[0]), item[1] as LoadedAlbum);
+						}
+					}
+				}
+			}
+		} catch (e) {
+			console.warn("Failed to load album cache from localStorage:", e);
+		}
+		return map;
+	}
+
+	function saveAlbumsCache(map: Map<number, LoadedAlbum>) {
+		if (typeof window === "undefined" || !window.localStorage) return;
+		try {
+			const entries = Array.from(map.entries());
+			localStorage.setItem(ALBUM_CACHE_KEY, JSON.stringify(entries));
+		} catch (e) {
+			console.warn("Failed to save album cache to localStorage:", e);
+		}
+	}
+
+	const albumContentCache = loadAlbumsCache();
 </script>
 
 <script lang="ts">
@@ -110,6 +143,7 @@
 				),
 			};
 			albumContentCache.set(message.albumId, loaded);
+			saveAlbumsCache(albumContentCache);
 			albumState = { status: "open", album: loaded };
 		})().catch((error) => {
 			console.error(error);
@@ -157,7 +191,11 @@
 					return { src: slide.url, poster: slide.coverUrl };
 				};
 				applyPhotoSwipeVideo(lightbox, videoAt);
-				applyPhotoSwipeDownloadButton(lightbox, videoAt);
+				applyPhotoSwipeDownloadButton(
+					lightbox,
+					videoAt,
+					() => (peerProfileId ? String(peerProfileId) : undefined),
+				);
 				lightbox.on("closingAnimationEnd", () => {
 					albumState = { status: "idle" };
 				});

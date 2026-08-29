@@ -47,6 +47,39 @@ export type IncomingMessageHandler = (incoming: {
 	conversation: Conversation;
 }) => void;
 
+const CONVERSATION_CACHE_KEY = "open_cached_conversations_v1";
+
+function loadConversationsCache(): Map<string, CachedConversation> {
+	const map = new Map<string, CachedConversation>();
+	if (typeof window === "undefined" || !window.localStorage) return map;
+	try {
+		const raw = localStorage.getItem(CONVERSATION_CACHE_KEY);
+		if (raw) {
+			const parsed = JSON.parse(raw);
+			if (Array.isArray(parsed)) {
+				for (const item of parsed) {
+					if (Array.isArray(item) && item.length === 2) {
+						map.set(item[0] as string, item[1] as CachedConversation);
+					}
+				}
+			}
+		}
+	} catch (e) {
+		console.warn("Failed to load conversations cache from localStorage:", e);
+	}
+	return map;
+}
+
+function saveConversationsCache(map: Map<string, CachedConversation>) {
+	if (typeof window === "undefined" || !window.localStorage) return;
+	try {
+		const entries = Array.from(map.entries());
+		localStorage.setItem(CONVERSATION_CACHE_KEY, JSON.stringify(entries));
+	} catch (e) {
+		console.warn("Failed to save conversations cache to localStorage:", e);
+	}
+}
+
 class ConversationsState {
 	entries = $state<Conversation[]>([]);
 	nextPage = $state<number | null>(null);
@@ -66,7 +99,7 @@ class ConversationsState {
 	#activeConversationId: string | null = null;
 	#wsPromises: Promise<() => void>[] = [];
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- read only by getCachedConversation(), never from a template or $derived
-	#messageCache = new Map<string, CachedConversation>();
+	#messageCache = loadConversationsCache();
 	#unsubscribeReconcile: () => void;
 	#destroyed = false;
 	#pendingFlags = new PendingFlags<OptimisticFlagField>();
@@ -687,10 +720,12 @@ class ConversationsState {
 		data: CachedConversation;
 	}): void {
 		this.#messageCache.set(conversationId, data);
+		saveConversationsCache(this.#messageCache);
 	}
 
 	invalidateConversation(id: string): void {
 		this.#messageCache.delete(id);
+		saveConversationsCache(this.#messageCache);
 	}
 }
 

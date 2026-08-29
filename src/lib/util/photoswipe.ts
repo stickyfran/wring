@@ -54,6 +54,7 @@ function getSlideMediaUrl(
 export function applyPhotoSwipeDownloadButton(
 	lightbox: PhotoSwipeLightbox,
 	videoAt?: (index: number) => VideoSlide | null,
+	subDir?: string | (() => string | undefined),
 ): void {
 	lightbox.on("uiRegister", () => {
 		lightbox.pswp?.ui?.registerElement({
@@ -70,8 +71,10 @@ export function applyPhotoSwipeDownloadButton(
 				event.preventDefault();
 				event.stopPropagation();
 				const url = getSlideMediaUrl(pswp, videoAt);
+				const targetSubDir =
+					typeof subDir === "function" ? subDir() : subDir;
 				if (url) {
-					void downloadMediaUrl(url);
+					void downloadMediaUrl(url, undefined, targetSubDir);
 				}
 			},
 			onInit: (el, pswp) => {
@@ -81,8 +84,10 @@ export function applyPhotoSwipeDownloadButton(
 					event.preventDefault();
 					event.stopPropagation();
 					const url = getSlideMediaUrl(pswp, videoAt);
+					const targetSubDir =
+						typeof subDir === "function" ? subDir() : subDir;
 					if (url) {
-						void downloadMediaUrl(url);
+						void downloadMediaUrl(url, undefined, targetSubDir);
 					}
 				};
 			},

@@ -2,6 +2,7 @@
 	import {
 		CopyIcon,
 		DotsThreeIcon,
+		DownloadSimpleIcon,
 		EyeSlashIcon,
 		FlagIcon,
 		ProhibitIcon,
@@ -14,13 +15,20 @@
 	import ToastUnimplemented from "$lib/components/feedback/ToastUnimplemented.svelte";
 	import { Button } from "$lib/components/ui/button";
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
+	import type { Profile } from "$lib/model/users/profiles";
+	import { exportProfileData } from "$lib/util/profile-exporter";
 
 	let {
 		profileId,
+		profile,
 		onBlocked,
 		onHidden,
-	}: { profileId: number; onBlocked: () => void; onHidden: () => void } =
-		$props();
+	}: {
+		profileId: number;
+		profile?: Profile;
+		onBlocked: () => void;
+		onHidden: () => void;
+	} = $props();
 
 	let submitting = $state(false);
 </script>
@@ -40,7 +48,18 @@
 			</Button>
 		{/snippet}
 	</DropdownMenu.Trigger>
-	<DropdownMenu.Content class="w-42" align="end">
+	<DropdownMenu.Content class="w-56" align="end">
+		<DropdownMenu.Item
+			onSelect={async () => {
+				await exportProfileData({
+					profileId,
+					existingProfile: profile,
+				});
+			}}
+		>
+			<DownloadSimpleIcon class="size-5" />
+			Download profile & media
+		</DropdownMenu.Item>
 		<DropdownMenu.Item
 			onSelect={async () => {
 				try {

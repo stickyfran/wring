@@ -95,7 +95,7 @@
 		socialNetworks,
 		medias,
 	} = profile}
-	<ImageCarousel {medias} />
+	<ImageCarousel {medias} profileId={profile.profileId} />
 	{#if !ourProfile && profile.isFavorite && profileState.note}
 		<FavoriteNoteButton
 			profileId={profile.profileId}
