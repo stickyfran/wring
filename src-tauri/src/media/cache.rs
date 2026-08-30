@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use grindr::Bytes;
 
-const MAX_TOTAL_BYTES: usize = 64 * 1024 * 1024;
+const MAX_TOTAL_BYTES: usize = 128 * 1024 * 1024;
 const MAX_ENTRY_BYTES: usize = super::MAX_MEDIA_BYTES;
 
 #[derive(Clone)]

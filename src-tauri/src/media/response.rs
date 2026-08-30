@@ -71,7 +71,7 @@ pub fn deliver(
 				.unwrap_or("application/octet-stream"),
 		)
 		.header(header::CONTENT_LENGTH, media.body.len())
-		.header(header::CACHE_CONTROL, "no-store")
+		.header(header::CACHE_CONTROL, "public, max-age=31536000, immutable")
 		.body(if is_head {
 			Vec::new()
 		} else {
