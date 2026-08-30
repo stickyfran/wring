@@ -81,6 +81,7 @@ class MainActivity : TauriActivity() {
 		}
 	}
 
+	inner class NotificationInterface {
 		@JavascriptInterface
 		fun syncCredentials(token: String, profileId: Long) {
 			OpenGrindSecureStorage.saveCredentials(applicationContext, token, profileId)
