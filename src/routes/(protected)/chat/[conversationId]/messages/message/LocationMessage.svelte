@@ -6,11 +6,7 @@
 	import type { LocationMessage } from "$lib/model/messaging/messages";
 	import { messageRef } from "./context";
 
-	let {
-		message,
-	}: {
-		message: LocationMessage["body"];
-	} = $props();
+	let { message }: { message: LocationMessage["body"] } = $props();
 
 	const ref = messageRef();
 
@@ -22,7 +18,7 @@
 
 <button
 	type="button"
-	class="relative overflow-hidden rounded-lg w-48 h-32 md:w-64 md:h-48 cursor-pointer border border-border bg-muted isolate"
+	class="relative isolate h-32 w-48 cursor-pointer overflow-hidden rounded-lg border border-border bg-muted md:h-48 md:w-64"
 	onclick={openMaps}
 	{@attach ref}
 >
@@ -48,7 +44,7 @@
 		<Marker latLng={[message.lat, message.lon]} />
 	</Map>
 	<div
-		class="absolute bottom-2 right-2 z-20 flex size-8 items-center justify-center rounded-full bg-background/80 shadow-sm backdrop-blur-md"
+		class="absolute right-2 bottom-2 z-20 flex size-8 items-center justify-center rounded-full bg-background/80 shadow-sm backdrop-blur-md"
 	>
 		<MapPinIcon weight="fill" class="size-5 text-foreground" />
 	</div>

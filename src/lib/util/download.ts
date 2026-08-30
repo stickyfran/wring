@@ -18,9 +18,7 @@ export async function downloadMediaUrl(
 	let filename = suggestedFilename;
 	if (!filename) {
 		const isVideo =
-			url.includes(".mp4") ||
-			url.includes("video") ||
-			url.includes("/v");
+			url.includes(".mp4") || url.includes("video") || url.includes("/v");
 		const ext = isVideo ? ".mp4" : ".jpg";
 		filename = `open_${Date.now()}${ext}`;
 	}
@@ -29,7 +27,11 @@ export async function downloadMediaUrl(
 	if (typeof window !== "undefined" && window.__AndroidDownload) {
 		try {
 			if (window.__AndroidDownload.downloadToSubdir) {
-				window.__AndroidDownload.downloadToSubdir(url, filename, subDir);
+				window.__AndroidDownload.downloadToSubdir(
+					url,
+					filename,
+					subDir,
+				);
 			} else {
 				window.__AndroidDownload.download(url, filename);
 			}
@@ -92,7 +94,9 @@ export async function downloadMediaUrl(
 		} catch (e) {
 			console.error("All download methods failed:", e);
 			if (!quiet) {
-				toast.error("Failed to download media", { id: "media-download" });
+				toast.error("Failed to download media", {
+					id: "media-download",
+				});
 			}
 			return false;
 		}

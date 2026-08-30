@@ -98,6 +98,17 @@ class WsState {
 		listen<void>("ws:disconnected", () => {
 			this.status = "disconnected";
 		}).catch((error) => console.error(error));
+
+		if (typeof document !== "undefined") {
+			document.addEventListener("visibilitychange", () => {
+				if (
+					document.visibilityState === "visible" &&
+					this.status === "disconnected"
+				) {
+					this.connect();
+				}
+			});
+		}
 	}
 
 	connect(): void {

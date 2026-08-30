@@ -12,9 +12,7 @@ export type Harness = {
 };
 
 export type Payload =
-	| { file: string }
-	| { bundle: string }
-	| { invent: number };
+	{ file: string } | { bundle: string } | { invent: number };
 
 export type ServerOptions = {
 	payload: Payload;

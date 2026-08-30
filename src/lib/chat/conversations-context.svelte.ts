@@ -23,10 +23,7 @@ export const getOrCreateConversationsState = accountScoped(
 					},
 					conversationId: conversation.data.conversationId,
 				});
-				showSystemNotificationForMessage({
-					message,
-					conversation,
-				});
+				showSystemNotificationForMessage({ message, conversation });
 			},
 		}),
 );

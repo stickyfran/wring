@@ -52,10 +52,7 @@
 	import { albumShares } from "$lib/chat/album-shares.svelte";
 	import MediaImage from "$lib/components/shared/MediaImage.svelte";
 	import { proxyMediaUrl } from "$lib/util/media";
-	import {
-		measureImage,
-		measureVideo,
-	} from "$lib/util/media-dimensions";
+	import { measureImage, measureVideo } from "$lib/util/media-dimensions";
 	import {
 		applyPhotoSwipeBackGesture,
 		applyPhotoSwipeDownloadButton,
@@ -153,7 +150,10 @@
 					error,
 				});
 			} else {
-				showErrorToast({ label: "Failed to load album content", error });
+				showErrorToast({
+					label: "Failed to load album content",
+					error,
+				});
 			}
 			albumState = { status: "idle" };
 		});
@@ -191,10 +191,8 @@
 					return { src: slide.url, poster: slide.coverUrl };
 				};
 				applyPhotoSwipeVideo(lightbox, videoAt);
-				applyPhotoSwipeDownloadButton(
-					lightbox,
-					videoAt,
-					() => (peerProfileId ? String(peerProfileId) : undefined),
+				applyPhotoSwipeDownloadButton(lightbox, videoAt, () =>
+					peerProfileId ? String(peerProfileId) : undefined,
 				);
 				lightbox.on("closingAnimationEnd", () => {
 					albumState = { status: "idle" };
@@ -240,9 +238,7 @@
 	{:else}
 		<LockedMedia class={media.cornerClass} />
 	{/if}
-	<div
-		class={["@container absolute top-0 left-0 size-full", contentClass]}
-	>
+	<div class={["@container absolute top-0 left-0 size-full", contentClass]}>
 		{#if !isViewable}
 			<div
 				class="absolute top-2 right-2 z-2 flex items-center gap-1 rounded-full bg-destructive/90 px-2 py-0.5 text-2xs font-semibold text-white shadow-md backdrop-blur-sm"

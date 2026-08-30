@@ -140,7 +140,10 @@ export function requestSystemNotificationPermission(): void {
 		Notification.permission === "default"
 	) {
 		Notification.requestPermission().catch((error) => {
-			console.error("Failed to request web notification permission", error);
+			console.error(
+				"Failed to request web notification permission",
+				error,
+			);
 		});
 	}
 }
@@ -163,4 +166,9 @@ export function requestIgnoreBatteryOptimizations(): void {
 export function openNotificationSettings(): void {
 	if (typeof window === "undefined" || !window.__AndroidNotification) return;
 	window.__AndroidNotification.openNotificationSettings?.();
+}
+
+export function syncNativeCredentials(token: string, profileId: number): void {
+	if (typeof window === "undefined" || !window.__AndroidNotification) return;
+	window.__AndroidNotification.syncCredentials?.(token, profileId);
 }

@@ -67,7 +67,7 @@
 {#snippet titleBadges()}
 	{#if conversation.data.isBlocked}
 		<span
-			class="rounded bg-destructive/20 px-1.5 py-0.5 text-[10px] font-bold text-destructive uppercase tracking-wider"
+			class="rounded bg-destructive/20 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-destructive uppercase"
 		>
 			Blocked
 		</span>

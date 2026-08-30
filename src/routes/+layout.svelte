@@ -55,11 +55,13 @@
 			});
 		}
 		requestSystemNotificationPermission();
-		void hydratePreferences().then(() => {
-			syncBackgroundServiceState();
-		}).catch((error: unknown) => {
-			console.error("Failed to hydrate preferences", error);
-		});
+		void hydratePreferences()
+			.then(() => {
+				syncBackgroundServiceState();
+			})
+			.catch((error: unknown) => {
+				console.error("Failed to hydrate preferences", error);
+			});
 		return releaseZoomBlock;
 	});
 

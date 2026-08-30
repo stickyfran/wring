@@ -1,10 +1,14 @@
 <script lang="ts">
 	import CommandCenter from "$lib/components/command-center/CommandCenter.svelte";
+	import { syncBackgroundServiceState } from "$lib/platform/notifications";
 	import { startOnlineHeartbeat } from "$lib/presence/online-heartbeat";
 
-	let { children }: { children: import("svelte").Snippet } = $props();
+	let { data, children }: import("./$types").LayoutProps = $props();
 
 	$effect(() => startOnlineHeartbeat());
+	$effect(() => {
+		syncBackgroundServiceState();
+	});
 </script>
 
 {@render children()}

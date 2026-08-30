@@ -54,7 +54,7 @@
 		<Avatar.Root
 			class={[
 				"size-20 after:rounded-xl",
-				isBlocked && "ring-2 ring-red-500 rounded-xl ring-offset-1",
+				isBlocked && "rounded-xl ring-2 ring-red-500 ring-offset-1",
 			]}
 		>
 			<UserAvatar
@@ -78,7 +78,10 @@
 			<DisplayName
 				name={title.value}
 				fallback={title.fallback}
-				class={["truncate", isBlocked && "text-red-500 font-bold dark:text-red-400"]}
+				class={[
+					"truncate",
+					isBlocked && "font-bold text-red-500 dark:text-red-400",
+				]}
 			/>
 		</Item.Title>
 		{@render description?.()}
@@ -88,7 +91,7 @@
 <Item.Root
 	variant={active ? "muted" : "outline"}
 	class={[
-		"@container relative flex min-w-24 flex-nowrap items-stretch gap-0 p-0",
+		"cv-auto @container relative flex min-w-24 flex-nowrap items-stretch gap-0 p-0",
 		{
 			"border-primary outline-2 -outline-offset-2 outline-primary outline-solid":
 				selected,

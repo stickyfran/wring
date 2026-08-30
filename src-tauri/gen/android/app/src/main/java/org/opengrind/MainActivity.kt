@@ -81,7 +81,11 @@ class MainActivity : TauriActivity() {
 		}
 	}
 
-	inner class NotificationInterface {
+		@JavascriptInterface
+		fun syncCredentials(token: String, profileId: Long) {
+			OpenGrindSecureStorage.saveCredentials(applicationContext, token, profileId)
+		}
+
 		@JavascriptInterface
 		fun showNotification(id: Int, title: String, body: String, conversationId: String?) {
 			runOnUiThread {
@@ -105,6 +109,7 @@ class MainActivity : TauriActivity() {
 
 		@JavascriptInterface
 		fun startBackgroundService() {
+			OpenGrindSecureStorage.setBackgroundServiceEnabled(applicationContext, true)
 			runOnUiThread {
 				startBackgroundServiceInternal()
 			}
@@ -112,6 +117,7 @@ class MainActivity : TauriActivity() {
 
 		@JavascriptInterface
 		fun stopBackgroundService() {
+			OpenGrindSecureStorage.setBackgroundServiceEnabled(applicationContext, false)
 			runOnUiThread {
 				stopBackgroundServiceInternal()
 			}
@@ -275,39 +281,17 @@ class MainActivity : TauriActivity() {
 	}
 
 	private fun sendNativeNotification(id: Int, title: String, body: String, conversationId: String?) {
-		val intent = Intent(this, MainActivity::class.java).apply {
-			flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-			if (!conversationId.isNullOrEmpty()) {
-				putExtra("conversationId", conversationId)
-			}
-		}
-		val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-			PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-		} else {
-			PendingIntent.FLAG_UPDATE_CURRENT
-		}
-		val pendingIntent = PendingIntent.getActivity(this, id, intent, flags)
-
-		val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-			.setSmallIcon(R.drawable.ic_launcher_foreground)
-			.setContentTitle(title)
-			.setContentText(body)
-			.setStyle(NotificationCompat.BigTextStyle().bigText(body))
-			.setPriority(NotificationCompat.PRIORITY_HIGH)
-			.setCategory(NotificationCompat.CATEGORY_MESSAGE)
-			.setDefaults(NotificationCompat.DEFAULT_ALL)
-			.setAutoCancel(true)
-			.setContentIntent(pendingIntent)
-			.build()
-
-		try {
-			NotificationManagerCompat.from(this).notify(id, notification)
-		} catch (_: SecurityException) {
-		}
+		BackgroundSyncService.sendNotification(this, id, title, body, conversationId)
 	}
 
 	override fun onPause() {
 		super.onPause()
+		webViewRef?.onResume()
+		webViewRef?.resumeTimers()
+	}
+
+	override fun onResume() {
+		super.onResume()
 		webViewRef?.onResume()
 		webViewRef?.resumeTimers()
 	}
@@ -386,6 +370,9 @@ class MainActivity : TauriActivity() {
 		webViewRef = webView
 		webView.settings.setGeolocationEnabled(false)
 		webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+		webView.overScrollMode = android.view.View.OVER_SCROLL_ALWAYS
+		webView.isVerticalScrollBarEnabled = false
+		webView.isHorizontalScrollBarEnabled = false
 		webView.settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 			webView.settings.setOffscreenPreRaster(true)

@@ -27,7 +27,7 @@ export type BooleanKey = {
 		: never;
 }[keyof GridSearchFilters];
 export type ListKey = {
-	[K in keyof GridSearchFilters]: GridSearchFilters[K] extends readonly unknown[]
-		? K
-		: never;
+	[
+		K in keyof GridSearchFilters
+	]: GridSearchFilters[K] extends readonly unknown[] ? K : never;
 }[keyof GridSearchFilters];

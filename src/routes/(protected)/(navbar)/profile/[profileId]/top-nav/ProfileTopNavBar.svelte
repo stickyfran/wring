@@ -41,7 +41,8 @@
 			variant="secondary"
 			aria-label="Download profile data and photos"
 			class="size-12"
-			onclick={() => exportProfileData({ profileId, existingProfile: profile })}
+			onclick={() =>
+				exportProfileData({ profileId, existingProfile: profile })}
 		>
 			<DownloadSimpleIcon class="size-6" />
 		</Button>

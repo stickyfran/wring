@@ -12,7 +12,10 @@ import { onProfileEdit } from "$lib/api/users/profiles";
 import { InboxViewedMarker } from "$lib/chat/inbox-last-viewed.svelte";
 import { InboxPaging } from "$lib/chat/inbox-paging.svelte";
 import { applyOptimisticBatch } from "$lib/chat/optimistic-batch";
-import { previewFromMessage, previewLabel } from "$lib/model/messaging/message-preview";
+import {
+	previewFromMessage,
+	previewLabel,
+} from "$lib/model/messaging/message-preview";
 import { showSystemNotification } from "$lib/platform/notifications";
 import { below } from "$lib/util/breakpoints.svelte";
 import { reconciler } from "$lib/util/reconcile";
@@ -59,24 +62,59 @@ function loadConversationsCache(): Map<string, CachedConversation> {
 			if (Array.isArray(parsed)) {
 				for (const item of parsed) {
 					if (Array.isArray(item) && item.length === 2) {
-						map.set(item[0] as string, item[1] as CachedConversation);
+						map.set(
+							item[0] as string,
+							item[1] as CachedConversation,
+						);
 					}
 				}
 			}
 		}
 	} catch (e) {
-		console.warn("Failed to load conversations cache from localStorage:", e);
+		console.warn(
+			"Failed to load conversations cache from localStorage:",
+			e,
+		);
 	}
 	return map;
 }
 
+let saveIdleHandle: number | ReturnType<typeof setTimeout> | null = null;
+
 function saveConversationsCache(map: Map<string, CachedConversation>) {
 	if (typeof window === "undefined" || !window.localStorage) return;
-	try {
-		const entries = Array.from(map.entries());
-		localStorage.setItem(CONVERSATION_CACHE_KEY, JSON.stringify(entries));
-	} catch (e) {
-		console.warn("Failed to save conversations cache to localStorage:", e);
+	if (saveIdleHandle !== null) {
+		if (
+			typeof cancelIdleCallback === "function" &&
+			typeof saveIdleHandle === "number"
+		) {
+			cancelIdleCallback(saveIdleHandle);
+		} else {
+			clearTimeout(saveIdleHandle as ReturnType<typeof setTimeout>);
+		}
+		saveIdleHandle = null;
+	}
+
+	const persist = () => {
+		saveIdleHandle = null;
+		try {
+			const entries = Array.from(map.entries());
+			localStorage.setItem(
+				CONVERSATION_CACHE_KEY,
+				JSON.stringify(entries),
+			);
+		} catch (e) {
+			console.warn(
+				"Failed to save conversations cache to localStorage:",
+				e,
+			);
+		}
+	};
+
+	if (typeof requestIdleCallback === "function") {
+		saveIdleHandle = requestIdleCallback(persist, { timeout: 1000 });
+	} else {
+		saveIdleHandle = setTimeout(persist, 200);
 	}
 }
 
@@ -225,7 +263,8 @@ class ConversationsState {
 			entry &&
 			!entry.data.muted
 		) {
-			const label = previewLabel(previewFromMessage(message)) || "Sent a message";
+			const label =
+				previewLabel(previewFromMessage(message)) || "Sent a message";
 			showSystemNotification({
 				title: entry.data.name || "Open",
 				body: label,

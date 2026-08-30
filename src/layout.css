@@ -432,3 +432,18 @@ a {
 			inset 1px 1px 5px rgba(0, 0, 0, 0.2);
 	}
 }
+
+html {
+	overscroll-behavior-y: none;
+}
+
+.cv-auto {
+	content-visibility: auto;
+	contain-intrinsic-size: auto 80px;
+}
+
+.gpu-accelerated {
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	perspective: 1000px;
+}

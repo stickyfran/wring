@@ -11,8 +11,7 @@ export type UpdateStage =
 export type StageView = { stage: UpdateStage; received: number; total: number };
 
 export type StageChange =
-	| { view: StageView }
-	| { failed: UpdateError | undefined };
+	{ view: StageView } | { failed: UpdateError | undefined };
 
 export function stageOf(progress: Progress): StageChange {
 	const { received, total } = progress;

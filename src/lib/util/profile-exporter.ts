@@ -27,7 +27,9 @@ export async function exportProfileData({
 	additionalMediaUrls?: { url: string; filename: string }[];
 }): Promise<void> {
 	const toastId = `export-profile-${profileId}`;
-	toast.loading(`Exporting data for profile #${profileId}...`, { id: toastId });
+	toast.loading(`Exporting data for profile #${profileId}...`, {
+		id: toastId,
+	});
 
 	let profile: Partial<Profile> | null = existingProfile ?? null;
 
@@ -35,7 +37,10 @@ export async function exportProfileData({
 		const fetched = await getProfile(profileId);
 		profile = { ...existingProfile, ...fetched };
 	} catch (e) {
-		console.warn("Could not fetch latest profile from server, using cached profile info", e);
+		console.warn(
+			"Could not fetch latest profile from server, using cached profile info",
+			e,
+		);
 	}
 
 	const subDir = String(profileId);
@@ -44,7 +49,9 @@ export async function exportProfileData({
 	lines.push("========================================");
 	lines.push(`OPEN - PROFILE EXPORT #${profileId}`);
 	lines.push("========================================");
-	lines.push(`Export Date: ${new Date().toLocaleString()} (${new Date().toISOString()})`);
+	lines.push(
+		`Export Date: ${new Date().toLocaleString()} (${new Date().toISOString()})`,
+	);
 	lines.push(`Profile ID: ${profileId}`);
 	lines.push(`Display Name: ${profile?.displayName || "None"}`);
 	if (profile?.age) lines.push(`Age: ${profile.age}`);
@@ -71,20 +78,31 @@ export async function exportProfileData({
 	if (profile?.ethnicity && ethnicities[profile.ethnicity]) {
 		lines.push(`Ethnicity: ${ethnicities[profile.ethnicity]}`);
 	}
-	if (profile?.relationshipStatus && relationshipStatuses[profile.relationshipStatus]) {
-		lines.push(`Relationship Status: ${relationshipStatuses[profile.relationshipStatus]}`);
+	if (
+		profile?.relationshipStatus &&
+		relationshipStatuses[profile.relationshipStatus]
+	) {
+		lines.push(
+			`Relationship Status: ${relationshipStatuses[profile.relationshipStatus]}`,
+		);
 	}
 	if (profile?.sexualPosition && sexualPositions[profile.sexualPosition]) {
 		lines.push(`Position: ${sexualPositions[profile.sexualPosition]}`);
 	}
 	if (profile?.lookingFor && profile.lookingFor.length > 0) {
-		lines.push(`Looking For: ${profile.lookingFor.map((id) => lookingForLabels[id] || id).join(", ")}`);
+		lines.push(
+			`Looking For: ${profile.lookingFor.map((id) => lookingForLabels[id] || id).join(", ")}`,
+		);
 	}
 	if (profile?.grindrTribes && profile.grindrTribes.length > 0) {
-		lines.push(`Tribes: ${profile.grindrTribes.map((id) => tribes[id] || id).join(", ")}`);
+		lines.push(
+			`Tribes: ${profile.grindrTribes.map((id) => tribes[id] || id).join(", ")}`,
+		);
 	}
 	if (profile?.meetAt && profile.meetAt.length > 0) {
-		lines.push(`Meet At: ${profile.meetAt.map((id) => meetAtLabels[id] || id).join(", ")}`);
+		lines.push(
+			`Meet At: ${profile.meetAt.map((id) => meetAtLabels[id] || id).join(", ")}`,
+		);
 	}
 
 	lines.push("\n--- LOCATION & DISTANCE ---");
@@ -100,19 +118,25 @@ export async function exportProfileData({
 	if (profile?.travelPlans && profile.travelPlans.length > 0) {
 		lines.push("Travel Plans:");
 		for (const tp of profile.travelPlans) {
-			lines.push(`  - Location: ${tp.locationName} (Geohash: ${tp.geohash})`);
+			lines.push(
+				`  - Location: ${tp.locationName} (Geohash: ${tp.geohash})`,
+			);
 		}
 	}
 
 	lines.push("\n--- SOCIAL NETWORKS & CONTACTS ---");
 	if (profile?.socialNetworks?.instagram?.userId) {
-		lines.push(`Instagram: @${profile.socialNetworks.instagram.userId} (https://instagram.com/${profile.socialNetworks.instagram.userId})`);
+		lines.push(
+			`Instagram: @${profile.socialNetworks.instagram.userId} (https://instagram.com/${profile.socialNetworks.instagram.userId})`,
+		);
 	}
 	if (profile?.verifiedInstagramId) {
 		lines.push(`Verified Instagram: @${profile.verifiedInstagramId}`);
 	}
 	if (profile?.socialNetworks?.twitter?.userId) {
-		lines.push(`Twitter / X: @${profile.socialNetworks.twitter.userId} (https://x.com/${profile.socialNetworks.twitter.userId})`);
+		lines.push(
+			`Twitter / X: @${profile.socialNetworks.twitter.userId} (https://x.com/${profile.socialNetworks.twitter.userId})`,
+		);
 	}
 	if (profile?.socialNetworks?.facebook?.userId) {
 		lines.push(`Facebook: ${profile.socialNetworks.facebook.userId}`);
@@ -123,13 +147,19 @@ export async function exportProfileData({
 		lines.push(`HIV Status: ${hivStatuses[profile.hivStatus]}`);
 	}
 	if (profile?.lastTestedDate) {
-		lines.push(`Last Tested: ${new Date(profile.lastTestedDate).toLocaleDateString()}`);
+		lines.push(
+			`Last Tested: ${new Date(profile.lastTestedDate).toLocaleDateString()}`,
+		);
 	}
 	if (profile?.sexualHealth && profile.sexualHealth.length > 0) {
-		lines.push(`Practices: ${profile.sexualHealth.map((id) => healthPractices[id] || id).join(", ")}`);
+		lines.push(
+			`Practices: ${profile.sexualHealth.map((id) => healthPractices[id] || id).join(", ")}`,
+		);
 	}
 	if (profile?.vaccines && profile.vaccines.length > 0) {
-		lines.push(`Vaccines: ${profile.vaccines.map((id) => vaccineLabels[id] || id).join(", ")}`);
+		lines.push(
+			`Vaccines: ${profile.vaccines.map((id) => vaccineLabels[id] || id).join(", ")}`,
+		);
 	}
 
 	lines.push("\n========================================");
@@ -145,7 +175,10 @@ export async function exportProfileData({
 	if (profile?.medias && profile.medias.length > 0) {
 		profile.medias.forEach((m, idx) => {
 			if (m.mediaHash) {
-				const fullUrl = profileMediaUrl({ mediaHash: m.mediaHash, size: "full" });
+				const fullUrl = profileMediaUrl({
+					mediaHash: m.mediaHash,
+					size: "full",
+				});
 				mediaUrlsToDownload.push({
 					url: fullUrl,
 					filename: `photo_${idx + 1}_${m.mediaHash}.jpg`,
@@ -153,7 +186,10 @@ export async function exportProfileData({
 			}
 		});
 	} else if (profile?.profileImageMediaHash) {
-		const fullUrl = profileMediaUrl({ mediaHash: profile.profileImageMediaHash, size: "full" });
+		const fullUrl = profileMediaUrl({
+			mediaHash: profile.profileImageMediaHash,
+			size: "full",
+		});
 		mediaUrlsToDownload.push({
 			url: fullUrl,
 			filename: `photo_1_${profile.profileImageMediaHash}.jpg`,
@@ -175,7 +211,12 @@ export async function exportProfileData({
 	// Download each media into the user's subfolder
 	let downloadedCount = 0;
 	for (const item of mediaUrlsToDownload) {
-		const ok = await downloadMediaUrl(item.url, item.filename, subDir, true);
+		const ok = await downloadMediaUrl(
+			item.url,
+			item.filename,
+			subDir,
+			true,
+		);
 		if (ok) downloadedCount++;
 	}
 

@@ -99,20 +99,16 @@ export class ViewsState extends ReconcilingListState<
 
 	get views(): ViewGridEntry[] {
 		const entries: ViewGridEntry[] = [
-			...this.#profiles.map(
-				(profile): ViewGridEntry => ({
-					type: "profile",
-					key: `profile:${profile.profileId}`,
-					profile,
-				}),
-			),
-			...this.#previews.map(
-				(preview, index): ViewGridEntry => ({
-					type: "preview",
-					key: `preview:${index}`,
-					preview,
-				}),
-			),
+			...this.#profiles.map((profile): ViewGridEntry => ({
+				type: "profile",
+				key: `profile:${profile.profileId}`,
+				profile,
+			})),
+			...this.#previews.map((preview, index): ViewGridEntry => ({
+				type: "preview",
+				key: `preview:${index}`,
+				preview,
+			})),
 		];
 		return entries.slice(0, this.visibleCount);
 	}

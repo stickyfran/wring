@@ -48,7 +48,9 @@
 		if (ok) {
 			toast.success("Test notification sent successfully to ntfy!");
 		} else {
-			toast.error("Failed to send test notification. Check server URL and topic.");
+			toast.error(
+				"Failed to send test notification. Check server URL and topic.",
+			);
 		}
 	}
 </script>
@@ -63,7 +65,10 @@
 			setPreferences({ backgroundService: newValue })
 				.then(() => syncBackgroundServiceState())
 				.catch((error) => {
-					showErrorToast({ label: "Failed to save preferences", error });
+					showErrorToast({
+						label: "Failed to save preferences",
+						error,
+					});
 				});
 		}
 	}
@@ -72,9 +77,12 @@
 {#if isAndroidPlatform()}
 	<Item.Root variant="outline" class="flex flex-col items-stretch gap-2 p-3">
 		<Item.Content class="min-w-0">
-			<Item.Title class="text-sm font-semibold">Android Background Reliability</Item.Title>
+			<Item.Title class="text-sm font-semibold"
+				>Android Background Reliability</Item.Title
+			>
 			<Item.Description class="text-xs text-muted-foreground">
-				Ensure Android does not put Open to sleep when running in background.
+				Ensure Android does not put Open to sleep when running in
+				background.
 			</Item.Description>
 		</Item.Content>
 		<div class="flex flex-wrap gap-2 pt-1">
@@ -103,11 +111,7 @@
 	</Item.Root>
 {:else}
 	<div class="px-4 py-1">
-		<Button
-			variant="secondary"
-			size="sm"
-			onclick={testLocalNotification}
-		>
+		<Button variant="secondary" size="sm" onclick={testLocalNotification}>
 			Test device notification
 		</Button>
 	</div>
@@ -130,7 +134,10 @@
 {#if prefs.ntfyEnabled}
 	<Item.Root variant="outline" class="flex flex-col items-stretch gap-3 p-4">
 		<div class="flex flex-col gap-1">
-			<label for="ntfy-server" class="text-xs font-medium text-muted-foreground">
+			<label
+				for="ntfy-server"
+				class="text-xs font-medium text-muted-foreground"
+			>
 				ntfy Server URL
 			</label>
 			<Input
@@ -141,13 +148,18 @@
 				onchange={(e) => {
 					const target = e.currentTarget;
 					if (target instanceof HTMLInputElement) {
-						void setPreferences({ ntfyServer: target.value || "https://ntfy.sh" });
+						void setPreferences({
+							ntfyServer: target.value || "https://ntfy.sh",
+						});
 					}
 				}}
 			/>
 		</div>
 		<div class="flex flex-col gap-1">
-			<label for="ntfy-topic" class="text-xs font-medium text-muted-foreground">
+			<label
+				for="ntfy-topic"
+				class="text-xs font-medium text-muted-foreground"
+			>
 				ntfy Topic Name
 			</label>
 			<Input

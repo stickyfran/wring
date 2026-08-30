@@ -78,14 +78,12 @@ async function pick({
 
 	if (demoEnabled) {
 		const files = await pickWebFiles({ filter, multiple });
-		return files.map(
-			(file): PickedMedia => ({
-				source: "web",
-				key: crypto.randomUUID(),
-				mimeType: file.type === "" ? null : file.type,
-				file,
-			}),
-		);
+		return files.map((file): PickedMedia => ({
+			source: "web",
+			key: crypto.randomUUID(),
+			mimeType: file.type === "" ? null : file.type,
+			file,
+		}));
 	}
 
 	if (isAndroidPlatform()) {
@@ -95,14 +93,12 @@ async function pick({
 			multiple,
 		});
 		return Promise.all(
-			uris.map(
-				async (uri): Promise<PickedMedia> => ({
-					source: "android",
-					key: crypto.randomUUID(),
-					mimeType: await AndroidFs.getMimeType(uri),
-					uri,
-				}),
-			),
+			uris.map(async (uri): Promise<PickedMedia> => ({
+				source: "android",
+				key: crypto.randomUUID(),
+				mimeType: await AndroidFs.getMimeType(uri),
+				uri,
+			})),
 		);
 	}
 
@@ -116,14 +112,12 @@ async function pick({
 			: Array.isArray(selection)
 				? selection
 				: [selection];
-	return paths.map(
-		(path): PickedMedia => ({
-			source: "desktop",
-			key: crypto.randomUUID(),
-			mimeType: mimeTypeFromPath(path),
-			path,
-		}),
-	);
+	return paths.map((path): PickedMedia => ({
+		source: "desktop",
+		key: crypto.randomUUID(),
+		mimeType: mimeTypeFromPath(path),
+		path,
+	}));
 }
 
 function mimeTypeFromPath(path: string): string | null {

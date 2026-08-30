@@ -145,6 +145,10 @@ async function fetchProfile(profileId: number): Promise<Profile> {
 
 const profiles = new FetchCache(fetchProfile, { ttlMs: 60_000 });
 
+export function getProfileSync(profileId: number): Profile | null {
+	return profiles.get(profileId);
+}
+
 export function getProfile(profileId: number): Promise<Profile> {
 	return profiles.fetch(profileId).catch((error: unknown) => {
 		if (isUnviewableProfileError(error)) markProfileUnviewable(profileId);

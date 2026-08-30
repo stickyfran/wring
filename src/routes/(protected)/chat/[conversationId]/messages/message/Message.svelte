@@ -76,8 +76,7 @@
 	}));
 
 	let contextMenuOpen:
-		| false
-		| { x: number; y: number; width: number; height: number } =
+		false | { x: number; y: number; width: number; height: number } =
 		$state(false);
 	let frameElement: HTMLElement | null = $state(null);
 	let messageElement: HTMLElement | null = $state(null);
@@ -243,7 +242,7 @@
 			class={[
 				"-my-3 flex touch-pan-y py-3",
 				{
-					"overflow-x-auto overscroll-x-none [scrollbar-width:none]":
+					"[scrollbar-width:none] overflow-x-auto overscroll-x-none":
 						railWheel,
 				},
 			]}

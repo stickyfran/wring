@@ -15,7 +15,7 @@
 	contentClass="flex flex-col pt-fixed-header"
 	direction="topToBottom"
 >
-	<div class="scrollbar-thin flex gap-0.5 overflow-x-auto p-4 pt-0">
+	<div class="flex scrollbar-thin gap-0.5 overflow-x-auto p-4 pt-0">
 		<LocationChange />
 		<QuickFilters bind:openFilters />
 		<CommandCenterTrigger />

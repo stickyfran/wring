@@ -8,7 +8,7 @@
 	import StarIcon from "phosphor-svelte/lib/StarIcon";
 	import { untrack } from "svelte";
 
-	import { getProfile } from "$lib/api/users/profiles";
+	import { getProfile, getProfileSync } from "$lib/api/users/profiles";
 	import { getOrCreateConversationsState } from "$lib/chat/conversations-context.svelte";
 	import BrokenUserAvatar from "$lib/components/profile/BrokenUserAvatar.svelte";
 	import UserAvatar from "$lib/components/profile/UserAvatar.svelte";
@@ -19,8 +19,19 @@
 
 	let { ourProfileId }: { ourProfileId: number } = $props();
 
+	let fetchedMediaHash = $state<string | null>(null);
+	const syncHash = $derived(
+		getProfileSync(ourProfileId)?.medias?.[0]?.mediaHash ?? null,
+	);
+	const cachedMediaHash = $derived(fetchedMediaHash ?? syncHash);
+
 	const myProfilePhotos = untrack(() =>
-		getProfile(ourProfileId).then((profile) => profile.medias),
+		getProfile(ourProfileId)
+			.then((profile) => {
+				fetchedMediaHash = profile.medias?.[0]?.mediaHash ?? null;
+				return profile.medias;
+			})
+			.catch(() => []),
 	);
 
 	const conversations = untrack(() =>
@@ -37,7 +48,9 @@
 	const isChatRoute = $derived(
 		page.route.id?.startsWith("/(protected)/chat") ?? false,
 	);
-	const currentChatTab = $derived(page.url.searchParams.get("tab") ?? "inbox");
+	const currentChatTab = $derived(
+		page.url.searchParams.get("tab") ?? "inbox",
+	);
 </script>
 
 <ProgressiveBlur
@@ -79,10 +92,7 @@
 				/>
 			{/if}
 		</a>
-		<a
-			href="/chat"
-			data-active={isChatRoute && currentChatTab === "inbox"}
-		>
+		<a href="/chat" data-active={isChatRoute && currentChatTab === "inbox"}>
 			<ChatCircleIcon weight="fill" />
 			Inbox
 			{#if hasUnreadInbox}
@@ -141,16 +151,31 @@
 			},
 		]}
 	>
-		{#await myProfilePhotos then photos}
-			{@const mainPhoto = photos[0] as { mediaHash: string } | undefined}
+		{#if cachedMediaHash !== null}
 			<UserAvatar
-				mediaHash={mainPhoto?.mediaHash ?? null}
+				mediaHash={cachedMediaHash}
 				class="size-full *:rounded-full"
 				size="lg"
 			/>
-		{:catch}
-			<BrokenUserAvatar />
-		{/await}
+		{:else}
+			{#await myProfilePhotos}
+				<UserAvatar
+					mediaHash={null}
+					class="size-full *:rounded-full"
+					size="lg"
+				/>
+			{:then photos}
+				{@const mainPhoto = photos[0] as
+					{ mediaHash: string } | undefined}
+				<UserAvatar
+					mediaHash={mainPhoto?.mediaHash ?? null}
+					class="size-full *:rounded-full"
+					size="lg"
+				/>
+			{:catch}
+				<BrokenUserAvatar />
+			{/await}
+		{/if}
 	</a>
 </ProgressiveBlur>
 

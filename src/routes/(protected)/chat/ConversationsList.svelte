@@ -75,9 +75,7 @@
 	});
 
 	const selectedEntries = $derived(
-		tabEntries.filter((entry) =>
-			selection.has(entry.data.conversationId),
-		),
+		tabEntries.filter((entry) => selection.has(entry.data.conversationId)),
 	);
 	const allPinned = $derived(
 		selectedEntries.length > 0 &&

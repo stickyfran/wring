@@ -11,8 +11,14 @@ declare global {
 		__AndroidOnBackGesture?: () => boolean;
 		__AndroidBack?: { moveTaskToBack(): void };
 		__AndroidNotification?: {
-			showNotification(id: number, title: string, body: string, conversationId: string): void;
+			showNotification(
+				id: number,
+				title: string,
+				body: string,
+				conversationId: string,
+			): void;
 			requestPermission(): void;
+			syncCredentials?(token: string, profileId: number): void;
 			startBackgroundService?(): void;
 			stopBackgroundService?(): void;
 			requestIgnoreBatteryOptimizations?(): void;
@@ -20,8 +26,16 @@ declare global {
 		};
 		__AndroidDownload?: {
 			download(url: string, filename?: string): void;
-			downloadToSubdir?(url: string, filename?: string, subDir?: string): void;
-			saveTextFileToSubdir?(content: string, filename: string, subDir?: string): void;
+			downloadToSubdir?(
+				url: string,
+				filename?: string,
+				subDir?: string,
+			): void;
+			saveTextFileToSubdir?(
+				content: string,
+				filename: string,
+				subDir?: string,
+			): void;
 		};
 	}
 }

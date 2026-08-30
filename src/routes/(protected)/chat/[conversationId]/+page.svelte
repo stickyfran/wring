@@ -71,13 +71,15 @@
 		<div
 			class="border-t border-destructive/30 bg-destructive/10 px-4 py-3 text-center text-sm font-medium text-destructive"
 		>
-			This conversation is unavailable because this user blocked you or deleted their account.
+			This conversation is unavailable because this user blocked you or
+			deleted their account.
 		</div>
 	{:else}
 		<MessageComposer
 			conversationId={conversationState.conversationId}
 			onSend={(drafts: MessageDraft[]) => conversationState.send(drafts)}
-			disabled={conversationState.loading || conversationState.error !== null}
+			disabled={conversationState.loading ||
+				conversationState.error !== null}
 			replyTo={conversationState.replyTo}
 			onCancelReply={() => conversationState.clearReplyTo()}
 			bind:height={composerHeight}

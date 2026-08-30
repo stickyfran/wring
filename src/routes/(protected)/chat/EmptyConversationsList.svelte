@@ -12,10 +12,7 @@
 	let {
 		filtered = false,
 		tab = "inbox",
-	}: {
-		filtered?: boolean;
-		tab?: string;
-	} = $props();
+	}: { filtered?: boolean; tab?: string } = $props();
 
 	const Icon = $derived(
 		filtered
