@@ -1,6 +1,6 @@
 {
 	"name": "open",
-	"version": "0.1.0-beta.4-dev",
+	"version": "0.1.0-beta.5-dev",
 	"license": "MIT",
 	"author": "Open Grind Governance (https://opengrind.org/governance)",
 	"type": "module",
@@ -11,6 +11,7 @@
 		"check:tools": "bun x tsc --noEmit -p tsconfig.tools.json",
 		"check:config": "opengrind-config check",
 		"check:deps": "cargo deny --manifest-path src-tauri/Cargo.toml check && bun audit && bun audit --cwd docs",
+		"bump": "bun scripts/bump-version.ts",
 		"check:version": "bun scripts/check-version.ts",
 		"check:backup-rules": "bun scripts/check-backup-rules.ts",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -40,6 +41,7 @@
 		"cookie": "^0.7.0",
 		"nanoid": "^3.3.18",
 		"postcss": "^8.5.24",
+		"postcss-selector-parser": "^7.1.3",
 		"valibot": "^1.4.2",
 		"vite": "^6.4.3"
 	},

@@ -211,6 +211,7 @@ export class ConversationState {
 			if (this.#destroyed) return;
 
 			this.profile = result.profile;
+			this.error = null;
 
 			const { messages, fresh, changed } = mergeServerMessages({
 				local: this.messages,
@@ -241,7 +242,11 @@ export class ConversationState {
 			if (error instanceof ConversationUnavailableError) {
 				this.error = error;
 			} else {
-				showErrorToast({ label: "Failed to refresh messages", error });
+				showErrorToast({
+					label: "Failed to refresh messages",
+					error,
+					onRetry: () => void this.refresh(),
+				});
 			}
 		} finally {
 			this.refreshing = false;
@@ -308,10 +313,10 @@ export class ConversationState {
 						this.profile = {
 							profileId: participant.profileId,
 							name: conv.data.name,
-							mediaHash: participant.primaryMediaHash,
-							distance: participant.distanceMetres,
-							onlineUntil: participant.onlineUntil,
-							showDistance: participant.distanceMetres !== null,
+							mediaHash: participant.primaryMediaHash ?? null,
+							distance: participant.distanceMetres ?? null,
+							onlineUntil: participant.onlineUntil ?? null,
+							showDistance: participant.distanceMetres !== null && participant.distanceMetres !== undefined,
 						};
 					}
 					if (this.messages.length === 0 && conv.data.preview?.text) {
@@ -622,6 +627,8 @@ export class ConversationState {
 	}
 
 	markMessageAsUnsent(messageId: string) {
+		const isLatest = this.messages.at(0)?.messageId === messageId;
+
 		const msg = this.messages.find((m) => m.messageId === messageId);
 		let revert: () => void = () => {};
 		if (msg) {
@@ -634,13 +641,13 @@ export class ConversationState {
 			msg.type = "Unsent";
 			msg.body = null;
 			this.#syncCache();
-			this.#updatePreview(msg);
+			if (isLatest) this.#updatePreview(msg);
 			revert = () => {
 				msg.unsent = original.unsent;
 				msg.type = original.type;
 				msg.body = original.body;
 				this.#syncCache();
-				this.#updatePreview(msg);
+				if (isLatest) this.#updatePreview(msg);
 			};
 		}
 		return { revert };

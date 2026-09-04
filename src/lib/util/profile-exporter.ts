@@ -72,36 +72,47 @@ export async function exportProfileData({
 		const weightLbs = Math.round((profile.weight / 1000) * 2.20462);
 		lines.push(`Weight: ${weightKg} kg (${weightLbs} lbs)`);
 	}
-	if (profile?.bodyType && bodyTypes[profile.bodyType]) {
-		lines.push(`Body Type: ${bodyTypes[profile.bodyType]}`);
+	if (
+		profile?.bodyType &&
+		(bodyTypes as Record<number, string>)[profile.bodyType]
+	) {
+		lines.push(`Body Type: ${(bodyTypes as Record<number, string>)[profile.bodyType]}`);
 	}
-	if (profile?.ethnicity && ethnicities[profile.ethnicity]) {
-		lines.push(`Ethnicity: ${ethnicities[profile.ethnicity]}`);
+	if (
+		profile?.ethnicity &&
+		(ethnicities as Record<number, string>)[profile.ethnicity]
+	) {
+		lines.push(`Ethnicity: ${(ethnicities as Record<number, string>)[profile.ethnicity]}`);
 	}
 	if (
 		profile?.relationshipStatus &&
-		relationshipStatuses[profile.relationshipStatus]
+		(relationshipStatuses as Record<number, string>)[profile.relationshipStatus]
 	) {
 		lines.push(
-			`Relationship Status: ${relationshipStatuses[profile.relationshipStatus]}`,
+			`Relationship Status: ${(relationshipStatuses as Record<number, string>)[profile.relationshipStatus]}`,
 		);
 	}
-	if (profile?.sexualPosition && sexualPositions[profile.sexualPosition]) {
-		lines.push(`Position: ${sexualPositions[profile.sexualPosition]}`);
+	if (
+		profile?.sexualPosition &&
+		(sexualPositions as Record<number, string>)[profile.sexualPosition]
+	) {
+		lines.push(
+			`Position: ${(sexualPositions as Record<number, string>)[profile.sexualPosition]}`,
+		);
 	}
 	if (profile?.lookingFor && profile.lookingFor.length > 0) {
 		lines.push(
-			`Looking For: ${profile.lookingFor.map((id) => lookingForLabels[id] || id).join(", ")}`,
+			`Looking For: ${profile.lookingFor.map((id) => (lookingForLabels as Record<number, string>)[id] || id).join(", ")}`,
 		);
 	}
 	if (profile?.grindrTribes && profile.grindrTribes.length > 0) {
 		lines.push(
-			`Tribes: ${profile.grindrTribes.map((id) => tribes[id] || id).join(", ")}`,
+			`Tribes: ${profile.grindrTribes.map((id) => (tribes as Record<number, string>)[id] || id).join(", ")}`,
 		);
 	}
 	if (profile?.meetAt && profile.meetAt.length > 0) {
 		lines.push(
-			`Meet At: ${profile.meetAt.map((id) => meetAtLabels[id] || id).join(", ")}`,
+			`Meet At: ${profile.meetAt.map((id) => (meetAtLabels as Record<number, string>)[id] || id).join(", ")}`,
 		);
 	}
 
@@ -143,8 +154,13 @@ export async function exportProfileData({
 	}
 
 	lines.push("\n--- HEALTH & PRACTICES ---");
-	if (profile?.hivStatus && hivStatuses[profile.hivStatus]) {
-		lines.push(`HIV Status: ${hivStatuses[profile.hivStatus]}`);
+	if (
+		profile?.hivStatus &&
+		(hivStatuses as Record<number, string>)[profile.hivStatus]
+	) {
+		lines.push(
+			`HIV Status: ${(hivStatuses as Record<number, string>)[profile.hivStatus]}`,
+		);
 	}
 	if (profile?.lastTestedDate) {
 		lines.push(
@@ -153,12 +169,12 @@ export async function exportProfileData({
 	}
 	if (profile?.sexualHealth && profile.sexualHealth.length > 0) {
 		lines.push(
-			`Practices: ${profile.sexualHealth.map((id) => healthPractices[id] || id).join(", ")}`,
+			`Practices: ${profile.sexualHealth.map((id) => (healthPractices as Record<number, string>)[id] || id).join(", ")}`,
 		);
 	}
 	if (profile?.vaccines && profile.vaccines.length > 0) {
 		lines.push(
-			`Vaccines: ${profile.vaccines.map((id) => vaccineLabels[id] || id).join(", ")}`,
+			`Vaccines: ${profile.vaccines.map((id) => (vaccineLabels as Record<number, string>)[id] || id).join(", ")}`,
 		);
 	}
 

@@ -70,9 +70,9 @@
 	import faviconPng from "$lib/assets/favicon.png";
 	import AccountStatusAlert from "$lib/components/feedback/AccountStatusAlert.svelte";
 	import CopyErrorConfirmAlert from "$lib/components/feedback/CopyErrorConfirmAlert.svelte";
+	import DesktopEntryAlert from "$lib/components/feedback/DesktopEntryAlert.svelte";
 	import RequestBlockedAlert from "$lib/components/feedback/RequestBlockedAlert.svelte";
 	import SessionErrorAlert from "$lib/components/feedback/SessionErrorAlert.svelte";
-	import StorageBackendNotice from "$lib/components/feedback/StorageBackendNotice.svelte";
 	import faviconSvg from "../../contrib/logo/open-grind.svg";
 
 	let { children }: { children?: import("svelte").Snippet } = $props();
@@ -134,6 +134,6 @@
 	<RequestBlockedAlert />
 	<SessionErrorAlert />
 	<AccountStatusAlert />
-	<StorageBackendNotice />
 	<CopyErrorConfirmAlert />
+	<DesktopEntryAlert />
 </IconContext>

@@ -11,6 +11,7 @@
 	import type { SvelteMediaTimeRange } from "svelte/elements";
 
 	import { Button } from "$lib/components/ui/button";
+	import { now } from "$lib/util/clock";
 	import { downloadMediaUrl } from "$lib/util/download";
 	import { formatMediaDuration } from "$lib/util/format-time";
 	import VideoScrubber from "./VideoScrubber.svelte";
@@ -24,8 +25,51 @@
 		src: string;
 		poster: string | null;
 		onready?: () => void;
-		onfail?: () => void;
+		onfail?: (failure: { undecodable: boolean; detail: string }) => void;
 	} = $props();
+
+	let element = $state<HTMLVideoElement | null>(null);
+	let retriedSrc: string | null = null;
+	let startedAt = now();
+
+	function elapsedSeconds(): string {
+		return ((now() - startedAt) / 1000).toFixed(1);
+	}
+
+	function describeFailure(error: MediaError | null): string {
+		if (error === null)
+			return `unknown media error after ${elapsedSeconds()}s`;
+		const message = error.message === "" ? "" : `: ${error.message}`;
+		return `MediaError ${error.code} after ${elapsedSeconds()}s${message}`;
+	}
+
+	function failed() {
+		const video = element;
+		const error = video?.error ?? null;
+		const undecodable =
+			error?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED;
+		const untouched =
+			video !== null &&
+			video.readyState === HTMLMediaElement.HAVE_NOTHING;
+		if (!undecodable && untouched && retriedSrc !== src) {
+			retriedSrc = src;
+			startedAt = now();
+			video?.load();
+			return;
+		}
+		onfail?.({ undecodable, detail: describeFailure(error) });
+	}
+
+	function loaded() {
+		if (element !== null && element.videoWidth === 0) {
+			onfail?.({
+				undecodable: true,
+				detail: `no decodable video track after ${elapsedSeconds()}s`,
+			});
+			return;
+		}
+		onready?.();
+	}
 
 	let paused = $state(true);
 	let muted = $state(true);
@@ -77,6 +121,7 @@
 >
 	<!-- svelte-ignore a11y_media_has_caption -->
 	<video
+		bind:this={element}
 		onpointerdown={toggle}
 		bind:paused
 		bind:muted
@@ -88,64 +133,68 @@
 		playsinline
 		preload="metadata"
 		class="size-full object-contain"
-		onloadeddata={onready}
-		onerror={onfail}
+		onloadeddata={loaded}
+		onerror={failed}
 	></video>
 	{#if controlsVisible}
 		<div
-			data-pswp-interactive
-			transition:fade={{ duration: 150, easing: sineOut }}
-			class="absolute right-[calc(1rem+var(--safe-area-right))] bottom-[calc(1rem+var(--safe-area-bottom))] left-[calc(1rem+var(--safe-area-left))] flex items-center gap-3 rounded-full p-3 text-white glass-media-controls-subdued"
+			class="absolute right-[calc(1rem+var(--safe-area-right))] bottom-[calc(1rem+var(--safe-area-bottom))] left-[calc(1rem+var(--safe-area-left))] flex justify-center"
 		>
-			<Button
-				variant="outline"
-				size="icon-lg"
-				aria-label={paused ? "Play" : "Pause"}
-				class="shrink-0 cursor-pointer glass-media-controls"
-				onclick={() => (paused = !paused)}
+			<div
+				data-pswp-interactive
+				transition:fade={{ duration: 150, easing: sineOut }}
+				class="flex grow items-center gap-3 rounded-full p-3 text-white glass-media-controls-subdued"
 			>
-				{#if paused}
-					<PlayIcon size={22} weight="fill" />
-				{:else}
-					<PauseIcon size={22} weight="fill" />
-				{/if}
-			</Button>
-			<span class="shrink-0 text-[13px] tracking-tight tabular-nums">
-				{formatMediaDuration(currentTime)}
-			</span>
-			<VideoScrubber
-				{currentTime}
-				{duration}
-				{buffered}
-				onseek={(time) => (currentTime = time)}
-			/>
-			<span class="shrink-0 text-[13px] tracking-tight tabular-nums">
-				{formatMediaDuration(duration)}
-			</span>
-			<Button
-				variant="outline"
-				size="icon-lg"
-				aria-label={muted ? "Unmute" : "Mute"}
-				class="shrink-0 cursor-pointer glass-media-controls"
-				onclick={() => (muted = !muted)}
-			>
-				{#if muted}
-					<SpeakerSimpleSlashIcon size={22} weight="fill" />
-				{:else}
-					<SpeakerSimpleHighIcon size={22} weight="fill" />
-				{/if}
-			</Button>
-			<Button
-				variant="outline"
-				size="icon-lg"
-				aria-label="Download video"
-				class="shrink-0 cursor-pointer glass-media-controls"
-				onclick={() => {
-					void downloadMediaUrl(src);
-				}}
-			>
-				<DownloadSimpleIcon size={22} weight="bold" />
-			</Button>
+				<Button
+					variant="outline"
+					size="icon-lg"
+					aria-label={paused ? "Play" : "Pause"}
+					class="shrink-0 cursor-pointer glass-media-controls"
+					onclick={() => (paused = !paused)}
+				>
+					{#if paused}
+						<PlayIcon size={22} weight="fill" />
+					{:else}
+						<PauseIcon size={22} weight="fill" />
+					{/if}
+				</Button>
+				<span class="shrink-0 text-[13px] tracking-tight tabular-nums">
+					{formatMediaDuration(currentTime)}
+				</span>
+				<VideoScrubber
+					{currentTime}
+					{duration}
+					{buffered}
+					onseek={(time) => (currentTime = time)}
+				/>
+				<span class="shrink-0 text-[13px] tracking-tight tabular-nums">
+					{formatMediaDuration(duration)}
+				</span>
+				<Button
+					variant="outline"
+					size="icon-lg"
+					aria-label={muted ? "Unmute" : "Mute"}
+					class="shrink-0 cursor-pointer glass-media-controls"
+					onclick={() => (muted = !muted)}
+				>
+					{#if muted}
+						<SpeakerSimpleSlashIcon size={22} weight="fill" />
+					{:else}
+						<SpeakerSimpleHighIcon size={22} weight="fill" />
+					{/if}
+				</Button>
+				<Button
+					variant="outline"
+					size="icon-lg"
+					aria-label="Download video"
+					class="shrink-0 cursor-pointer glass-media-controls"
+					onclick={() => {
+						void downloadMediaUrl(src);
+					}}
+				>
+					<DownloadSimpleIcon size={22} weight="bold" />
+				</Button>
+			</div>
 		</div>
 	{/if}
 </div>

@@ -1,6 +1,8 @@
 pub mod api;
 mod app_settings;
 mod appearance;
+mod context_menu;
+mod desktop_entry;
 mod error;
 pub mod media;
 mod photo;
@@ -179,6 +181,9 @@ pub fn run() {
             api::session_recovery::set_app_active,
             api::session_recovery::session_health,
             scroll_phase::scroll_gesture_capture,
+            desktop_entry::desktop_entry_offer,
+            desktop_entry::desktop_entry_install,
+            desktop_entry::desktop_entry_dismiss,
             api::update::commands::update_capability,
             api::update::commands::update_settings,
             api::update::commands::update_set_auto_check,
@@ -214,6 +219,7 @@ pub fn run() {
                         .on_navigation(is_app_url)
                         .build()?;
                 appearance::unlock_visual_effects(&window);
+                context_menu::trim_native_menu(&window);
                 #[cfg(desktop)]
                 quit_when_closed(&window);
             }

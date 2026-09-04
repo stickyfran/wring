@@ -195,7 +195,7 @@
 				{#each Array(8)}
 					<Skeleton class="h-24.5 w-full shrink-0" />
 				{/each}
-			{:else if conversations.error}
+			{:else if conversations.error && conversations.entries.length === 0}
 				<div class="flex flex-1">
 					<ApiErrorDisplay
 						error={conversations.error}
@@ -242,7 +242,7 @@
 				</div>
 			{/if}
 		</div>
-		{#if !conversations.loading && !conversations.error}
+		{#if !conversations.loading && (conversations.entries.length > 0 || !conversations.error)}
 			<DataRefreshControl
 				{container}
 				updating={conversations.refreshing}
