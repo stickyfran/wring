@@ -193,10 +193,29 @@ class BackgroundSyncService : Service() {
 
 				val conversationId = payload.optString("conversationId")
 				val senderName = payload.optString("senderName").takeIf { it.isNotBlank() } ?: "Open"
-				val body = payload.optJSONObject("body")?.optString("text") ?: "New message"
+				val msgType = payload.optString("type")
+				val bodyObj = payload.optJSONObject("body")
+				val body = when (msgType) {
+					"Text" -> bodyObj?.optString("text")?.takeIf { it.isNotBlank() } ?: "New message"
+					"Image", "ExpiringImage" -> "📷 Photo"
+					"Album", "ExpiringAlbum", "ExpiringAlbumV2" -> "📁 Album"
+					"Video", "NonExpiringVideo", "PrivateVideo" -> "🎥 Video"
+					"Audio" -> "🎤 Voice message"
+					"Location" -> "📍 Location"
+					"Giphy", "Gaymoji" -> "Sticker"
+					else -> bodyObj?.optString("text")?.takeIf { it.isNotBlank() } ?: "Sent you a message"
+				}
 
 				val notifId = (System.currentTimeMillis() % 1000000).toInt()
 				sendNotification(applicationContext, notifId, senderName, body, conversationId)
+			} else if (type == "tap.v1.tap_sent" || type == "tap.v2.tap_sent") {
+				val payload = json.optJSONObject("payload") ?: return
+				val senderId = payload.optLong("senderId")
+				if (senderId == ourProfileId) return
+
+				val senderName = payload.optString("senderDisplayName").takeIf { it.isNotBlank() } ?: "Someone"
+				val notifId = (System.currentTimeMillis() % 1000000).toInt()
+				sendNotification(applicationContext, notifId, senderName, "Sent you a tap 🔥", null)
 			}
 		} catch (e: Exception) {
 			e.printStackTrace()

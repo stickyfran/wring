@@ -51,6 +51,12 @@ const loginResultSchema = z.object({
 	restriction: restrictionSchema.nullish(),
 });
 
+export const sessionCredentialsSchema = z.object({
+	authToken: z.string(),
+	profileId: z.coerce.number().int().nonnegative(),
+});
+export type SessionCredentials = z.infer<typeof sessionCredentialsSchema>;
+
 export const methods = {
 	login: {
 		request: z.object({ email: z.email(), password: z.string().min(1) }),
@@ -64,6 +70,10 @@ export const methods = {
 	auth_state: {
 		request: z.undefined(),
 		response: z.int().nonnegative().nullable(),
+	},
+	get_session_credentials: {
+		request: z.undefined(),
+		response: sessionCredentialsSchema.nullable(),
 	},
 	account_restriction: {
 		request: z.undefined(),

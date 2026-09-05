@@ -85,6 +85,19 @@ class MainActivity : TauriActivity() {
 		@JavascriptInterface
 		fun syncCredentials(token: String, profileId: Long) {
 			OpenGrindSecureStorage.saveCredentials(applicationContext, token, profileId)
+			if (OpenGrindSecureStorage.isBackgroundServiceEnabled(applicationContext)) {
+				runOnUiThread {
+					startBackgroundServiceInternal()
+				}
+			}
+		}
+
+		@JavascriptInterface
+		fun clearCredentials() {
+			OpenGrindSecureStorage.clearCredentials(applicationContext)
+			runOnUiThread {
+				stopBackgroundServiceInternal()
+			}
 		}
 
 		@JavascriptInterface

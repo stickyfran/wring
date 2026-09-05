@@ -147,6 +147,34 @@ pub async fn recaptcha_first_party_enabled(
 		.map_err(Into::into)
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionCredentials {
+	pub auth_token: String,
+	pub profile_id: u64,
+}
+
+#[tauri::command]
+pub async fn get_session_credentials(
+	state: tauri::State<'_, AppState>,
+) -> Result<Option<SessionCredentials>, AppError> {
+	let Ok(client) = state.client() else {
+		return Ok(None);
+	};
+	let rx = client.session_receiver();
+	let borrow = rx.borrow();
+	let Some(session) = borrow.as_ref() else {
+		return Ok(None);
+	};
+	let Some(profile_id) = session.credentials.profile_id.as_ref().and_then(|id| id.parse::<u64>().ok()) else {
+		return Ok(None);
+	};
+	Ok(Some(SessionCredentials {
+		auth_token: session.credentials.auth_token.clone(),
+		profile_id,
+	}))
+}
+
 #[tauri::command]
 pub async fn auth_state(
 	state: tauri::State<'_, AppState>,

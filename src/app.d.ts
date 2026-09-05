@@ -19,6 +19,7 @@ declare global {
 			): void;
 			requestPermission(): void;
 			syncCredentials?(token: string, profileId: number): void;
+			clearCredentials?(): void;
 			startBackgroundService?(): void;
 			stopBackgroundService?(): void;
 			requestIgnoreBatteryOptimizations?(): void;

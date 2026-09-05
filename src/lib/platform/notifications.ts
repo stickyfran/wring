@@ -1,3 +1,4 @@
+import { callMethod } from "$lib/api/methods";
 import { getPreferencesSnapshot } from "$lib/app-data/preferences.svelte";
 import type { Conversation } from "$lib/model/messaging/conversations";
 import type { ApiResponseMessage } from "$lib/model/messaging/messages";
@@ -171,4 +172,21 @@ export function openNotificationSettings(): void {
 export function syncNativeCredentials(token: string, profileId: number): void {
 	if (typeof window === "undefined" || !window.__AndroidNotification) return;
 	window.__AndroidNotification.syncCredentials?.(token, profileId);
+}
+
+export async function syncSessionCredentials(): Promise<void> {
+	if (typeof window === "undefined" || !window.__AndroidNotification) return;
+	try {
+		const creds = await callMethod("get_session_credentials");
+		if (creds) {
+			syncNativeCredentials(creds.authToken, creds.profileId);
+		}
+	} catch (error) {
+		console.error("Failed to sync session credentials to native storage:", error);
+	}
+}
+
+export function clearNativeCredentials(): void {
+	if (typeof window === "undefined" || !window.__AndroidNotification) return;
+	window.__AndroidNotification.clearCredentials?.();
 }
