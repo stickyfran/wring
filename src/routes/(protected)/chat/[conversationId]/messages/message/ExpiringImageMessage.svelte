@@ -1,3 +1,51 @@
+<script lang="ts" module>
+	type LoadedImage = { url: string; size: MediaDimensions | null };
+
+	const EXPIRING_IMAGE_CACHE_KEY = "open_cached_expiring_images_v1";
+
+	function loadExpiringImagesCache(): Map<string, LoadedImage> {
+		const map = new Map<string, LoadedImage>();
+		if (typeof window === "undefined" || !window.localStorage) return map;
+		try {
+			const raw = localStorage.getItem(EXPIRING_IMAGE_CACHE_KEY);
+			if (raw) {
+				const parsed = JSON.parse(raw);
+				if (Array.isArray(parsed)) {
+					for (const item of parsed) {
+						if (Array.isArray(item) && item.length === 2) {
+							map.set(String(item[0]), item[1] as LoadedImage);
+						}
+					}
+				}
+			}
+		} catch (e) {
+			console.warn(
+				"Failed to load expiring image cache from localStorage:",
+				e,
+			);
+		}
+		return map;
+	}
+
+	function saveExpiringImagesCache(map: Map<string, LoadedImage>) {
+		if (typeof window === "undefined" || !window.localStorage) return;
+		try {
+			const entries = Array.from(map.entries());
+			localStorage.setItem(
+				EXPIRING_IMAGE_CACHE_KEY,
+				JSON.stringify(entries),
+			);
+		} catch (e) {
+			console.warn(
+				"Failed to save expiring image cache to localStorage:",
+				e,
+			);
+		}
+	}
+
+	const expiringImageCache = loadExpiringImagesCache();
+</script>
+
 <script lang="ts">
 	import "photoswipe/style.css";
 	import { ImagesIcon } from "phosphor-svelte";
@@ -54,8 +102,6 @@
 		"border border-border bg-input",
 	]);
 
-	type LoadedImage = { url: string; size: MediaDimensions | null };
-
 	type ImageState =
 		| { status: "idle" }
 		| { status: "loading" }
@@ -63,13 +109,18 @@
 		| { status: "expired" };
 
 	let imageState = $state<ImageState>({ status: "idle" });
-	let cachedImage: LoadedImage | null = null;
+	let cachedImage = $state<LoadedImage | null>(null);
+
+	$effect(() => {
+		cachedImage = expiringImageCache.get(messageId) ?? null;
+	});
 
 	const ownUrl = $derived(
 		isOut && message.url !== null ? proxyMediaUrl(message.url) : null,
 	);
 
 	const viewable = $derived.by(() => {
+		if (cachedImage !== null) return true;
 		if (isOut) {
 			return ownUrl !== null;
 		} else {
@@ -82,10 +133,13 @@
 	});
 
 	function openImage() {
-		imageState =
-			cachedImage === null
-				? { status: "loading" }
-				: { status: "open", image: cachedImage };
+		const cached = cachedImage ?? expiringImageCache.get(messageId);
+		if (cached) {
+			cachedImage = cached;
+			imageState = { status: "open", image: cached };
+		} else {
+			imageState = { status: "loading" };
+		}
 	}
 
 	async function fetchImageUrl(): Promise<string | null> {
@@ -100,6 +154,12 @@
 		if (imageState.status !== "loading") return;
 		void (async () => {
 			try {
+				const cached = cachedImage ?? expiringImageCache.get(messageId);
+				if (cached) {
+					cachedImage = cached;
+					imageState = { status: "open", image: cached };
+					return;
+				}
 				const url = ownUrl ?? (await fetchImageUrl());
 				if (url === null) {
 					imageState = { status: "expired" };
@@ -107,6 +167,8 @@
 				}
 				const size = await measureImage(url).catch(() => null);
 				cachedImage = { url, size };
+				expiringImageCache.set(messageId, cachedImage);
+				saveExpiringImagesCache(expiringImageCache);
 				imageState = { status: "open", image: cachedImage };
 			} catch (error) {
 				console.error(error);

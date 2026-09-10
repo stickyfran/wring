@@ -301,11 +301,6 @@ class ConversationsState {
 			if (this.#fetches.isStale(fetchEpoch)) return;
 			this.nextPage = reachedEnd ? null : nextPage;
 
-			const activeId = this.#activeConversationId;
-			for (const id of [...this.#messageCache.keys()]) {
-				if (id !== activeId) this.#messageCache.delete(id);
-			}
-
 			for (const incoming of fetched.values()) {
 				const existing = this.#find(incoming.data.conversationId);
 				if (existing) {
