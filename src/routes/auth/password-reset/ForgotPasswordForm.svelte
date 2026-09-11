@@ -7,7 +7,7 @@
 </script>
 
 <Alert.Root class="m-auto w-full max-w-sm">
-	<SmileySadIcon size="2em" color="#ffba20" weight="fill" />
+	<SmileySadIcon size="2em" color="#f97316" weight="fill" />
 	<Alert.Title>Unimplemented</Alert.Title>
 	<Alert.Description>
 		Password reset is not implemented yet, track <Link

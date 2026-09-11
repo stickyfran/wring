@@ -40,11 +40,11 @@
 			size="icon-lg"
 			variant="secondary"
 			aria-label="Download profile data and photos"
-			class="size-12"
+			class="size-13 shrink-0 text-primary hover:text-primary-foreground hover:bg-primary"
 			onclick={() =>
 				exportProfileData({ profileId, existingProfile: profile })}
 		>
-			<DownloadSimpleIcon class="size-6" />
+			<DownloadSimpleIcon class="size-7" />
 		</Button>
 		<ProfileActionsMenu {profileId} {profile} {onBlocked} {onHidden} />
 	{/if}

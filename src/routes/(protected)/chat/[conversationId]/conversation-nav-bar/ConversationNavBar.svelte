@@ -61,10 +61,10 @@
 			size="icon-lg"
 			variant="ghost"
 			aria-label="Download profile data and media"
-			class="me-3 size-10 shrink-0"
+			class="me-2 size-12 shrink-0 text-primary hover:bg-primary/20"
 			onclick={exportAllChatData}
 		>
-			<DownloadSimpleIcon class="size-6" />
+			<DownloadSimpleIcon class="size-7" />
 		</Button>
 	{:else if conversationState.error}
 		<span class="flex-1">Failed to load conversation</span>

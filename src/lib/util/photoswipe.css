@@ -36,12 +36,12 @@
 	align-items: center;
 	justify-content: center;
 	position: relative;
-	width: 50px !important;
-	height: 50px !important;
+	width: 56px !important;
+	height: 56px !important;
 	cursor: pointer !important;
 	pointer-events: auto !important;
 	z-index: 100 !important;
-	opacity: 0.85;
+	opacity: 0.9;
 	transition:
 		opacity 0.2s ease,
 		transform 0.1s ease;
@@ -56,12 +56,12 @@
 }
 
 .pswp__button--download-button:active {
-	transform: scale(0.9);
+	transform: scale(0.92);
 }
 
 .pswp__button--download-button svg {
-	width: 22px !important;
-	height: 22px !important;
+	width: 28px !important;
+	height: 28px !important;
 	pointer-events: none !important;
 	fill: #ffffff !important;
 	color: #ffffff !important;

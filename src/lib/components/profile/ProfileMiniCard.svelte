@@ -56,7 +56,7 @@
 				<div class="badge">
 					<StarIcon
 						weight="fill"
-						class="m-auto size-4/6 text-yellow-500"
+						class="m-auto size-4/6 text-orange-500"
 					/>
 					<span class="sr-only">Favorite</span>
 				</div>

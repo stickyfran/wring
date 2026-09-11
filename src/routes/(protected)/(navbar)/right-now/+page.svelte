@@ -7,7 +7,7 @@
 
 <div class="flex flex-1 px-8">
 	<Alert.Root class="m-auto w-full max-w-sm">
-		<SmileySadIcon size="2em" color="#ffba20" weight="fill" />
+		<SmileySadIcon size="2em" color="#f97316" weight="fill" />
 		<Alert.Title>Unimplemented</Alert.Title>
 		<Alert.Description>
 			"Right now" tab is not implemented yet, tracking in <Link

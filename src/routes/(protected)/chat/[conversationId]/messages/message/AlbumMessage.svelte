@@ -105,9 +105,22 @@
 		| { status: "open"; album: LoadedAlbum };
 
 	let albumState = $state<AlbumState>({ status: "idle" });
+
+	const cachedCover = $derived.by(() => {
+		if (message.coverUrl) return proxyMediaUrl(message.coverUrl);
+		const cached = albumContentCache.get(message.albumId);
+		if (cached && cached.content.length > 0) {
+			const first = cached.content[0];
+			if (first) {
+				return first.coverUrl || first.url;
+			}
+		}
+		return null;
+	});
+
 	function openAlbum() {
 		const cached = albumContentCache.get(message.albumId);
-		if (cached) {
+		if (cached && !isViewable) {
 			albumState = { status: "open", album: cached };
 		} else {
 			albumState = { status: "loading" };
@@ -117,48 +130,66 @@
 	$effect(() => {
 		if (albumState.status !== "loading") return;
 		(async () => {
-			const album = await getAlbumContent(message.albumId);
-			const loaded = {
-				...album,
-				content: await Promise.all(
-					album.content.map(async (slide) => {
-						const kind = slide.contentType.startsWith("video/")
-							? "video"
-							: "image";
-						const url = proxyMediaUrl(slide.url, { as: kind });
-						const coverUrl = proxyMediaUrl(slide.coverUrl);
-						const measurable = { video: coverUrl, image: url }[
-							kind
-						];
-						return {
-							...slide,
-							url,
-							coverUrl,
-							...(measurable === null
-								? await measureVideo(url)
-								: await measureImage(measurable)),
-						};
-					}),
-				),
-			};
-			albumContentCache.set(message.albumId, loaded);
-			saveAlbumsCache(albumContentCache);
-			albumState = { status: "open", album: loaded };
-		})().catch((error) => {
-			console.error(error);
-			if (!isViewable) {
-				showErrorToast({
-					label: "Album is no longer shared by sender",
-					error,
-				});
-			} else {
-				showErrorToast({
-					label: "Failed to load album content",
-					error,
-				});
+			try {
+				const album = await getAlbumContent(message.albumId);
+				const loaded = {
+					...album,
+					content: await Promise.all(
+						album.content.map(async (slide) => {
+							const kind = slide.contentType.startsWith("video/")
+								? "video"
+								: "image";
+							const url = proxyMediaUrl(slide.url, { as: kind });
+							const coverUrl = proxyMediaUrl(slide.coverUrl);
+							const measurable = { video: coverUrl, image: url }[
+								kind
+							];
+							const dims =
+								(measurable === null
+									? await measureVideo(url).catch(() => ({
+											width: 0,
+											height: 0,
+										}))
+									: await measureImage(measurable).catch(
+											() => ({
+												width: 0,
+												height: 0,
+											}),
+										)) ?? { width: 0, height: 0 };
+							return {
+								...slide,
+								url,
+								coverUrl,
+								width: dims.width,
+								height: dims.height,
+							};
+						}),
+					),
+				};
+				albumContentCache.set(message.albumId, loaded);
+				saveAlbumsCache(albumContentCache);
+				albumState = { status: "open", album: loaded };
+			} catch (error) {
+				console.error("Album fetch error:", error);
+				const cached = albumContentCache.get(message.albumId);
+				if (cached) {
+					albumState = { status: "open", album: cached };
+					return;
+				}
+				if (!isViewable) {
+					showErrorToast({
+						label: "Album is no longer shared by sender",
+						error,
+					});
+				} else {
+					showErrorToast({
+						label: "Failed to load album content",
+						error,
+					});
+				}
+				albumState = { status: "idle" };
 			}
-			albumState = { status: "idle" };
-		});
+		})();
 	});
 
 	$effect(() => {
@@ -182,8 +213,8 @@
 					if (slide === undefined) return itemData;
 					return {
 						src: slide.url,
-						width: slide.width,
-						height: slide.height,
+						width: slide.width || 0,
+						height: slide.height || 0,
 					};
 				});
 				applyPhotoSwipeBackGesture(lightbox);
@@ -230,10 +261,10 @@
 	disabled={albumState.status !== "idle"}
 	{@attach media.attach}
 >
-	{#if message.coverUrl}
+	{#if cachedCover}
 		<MediaImage
 			loading="lazy"
-			src={proxyMediaUrl(message.coverUrl)}
+			src={cachedCover}
 			class="absolute top-0 left-0 h-full w-full rounded-[inherit]"
 			imgClass="bg-card-foreground/10"
 		/>

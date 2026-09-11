@@ -9,7 +9,7 @@
 
 <div class="flex flex-1 py-16">
 	<Alert.Root class="m-auto w-full max-w-sm">
-		<SmileySadIcon size="2em" color="#ffba20" weight="fill" />
+		<SmileySadIcon size="2em" color="#f97316" weight="fill" />
 		<Alert.Title>Unimplemented</Alert.Title>
 		<Alert.Description>
 			{label} is not implemented yet, tracking in <Link
