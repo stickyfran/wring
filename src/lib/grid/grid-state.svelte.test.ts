@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
 	getGridMock,
+	getTagsMock,
 	patchCachedProfileMock,
 	reconcileHandlers,
 	showErrorToastMock,
@@ -10,6 +11,7 @@ const {
 	storedPreferences,
 } = vi.hoisted(() => ({
 	getGridMock: vi.fn(),
+	getTagsMock: vi.fn(),
 	patchCachedProfileMock: vi.fn(),
 	reconcileHandlers: [] as (() => unknown)[],
 	resolveGeohashMock: vi.fn(),
@@ -25,6 +27,7 @@ vi.mock("./grid", () => ({
 	resolveLazyProfile: vi.fn(),
 	setCachedProfile: vi.fn(),
 }));
+vi.mock("$lib/api/users/tags", () => ({ getTags: getTagsMock }));
 vi.mock("$lib/util/reconcile", () => ({
 	reconciler: {
 		subscribe: (handler: () => unknown) => {
@@ -35,7 +38,7 @@ vi.mock("$lib/util/reconcile", () => ({
 }));
 vi.mock("$lib/app-data/preferences.svelte", () => ({
 	getPreferences: () => Promise.resolve({}),
-	getPreferencesSnapshot: () => storedPreferences,
+	preferencesSnapshot: () => storedPreferences,
 	setPreferences: setPreferencesMock,
 }));
 vi.mock("$lib/api/error-toast", () => ({ showErrorToast: showErrorToastMock }));
@@ -50,13 +53,14 @@ import {
 	markProfileViewable,
 } from "$lib/api/users/profile-viewability";
 import { mergeProfileEditIntoCaches } from "$lib/api/users/profiles";
+import { defaultFilters } from "$lib/model/browse/grid/filters";
 import type { GridProfile } from "./grid";
 import { gridState } from "./grid-state.svelte";
 
-const page = (ids: number[]) => ({
-	items: ids.map((id) => ({ id, type: "lazy" })),
-	nextPage: null,
-});
+const page = (
+	ids: number[],
+	{ nextPage = null }: { nextPage?: number | null } = {},
+) => ({ items: ids.map((id) => ({ id, type: "lazy" })), nextPage });
 
 async function settle() {
 	await vi.waitFor(() => expect(getGridMock).toHaveBeenCalled());
@@ -80,6 +84,35 @@ beforeEach(async () => {
 	await settle();
 	getGridMock.mockReset();
 	getGridMock.mockResolvedValue(page([2]));
+});
+
+describe("grid tag keys", () => {
+	it("sends tag keys for tag texts saved by an older version", async () => {
+		getTagsMock.mockResolvedValue([
+			{
+				language: "en",
+				categoryCollection: [
+					{
+						text: "Fitness",
+						possessiveText: null,
+						tags: [{ tagId: 1, key: "gym", text: "Working Out" }],
+					},
+				],
+			},
+		]);
+		gridState.filters.value = {
+			...defaultFilters,
+			tagsEnabled: true,
+			tags: ["Working Out"],
+		};
+
+		gridState.retry();
+		await settle();
+
+		expect(getGridMock).toHaveBeenCalledWith(
+			expect.objectContaining({ tags: ["gym"] }),
+		);
+	});
 });
 
 describe("grid reconciliation", () => {
@@ -422,5 +455,136 @@ describe("fetch races", () => {
 
 		await gridState.refresh();
 		expect(showErrorToastMock).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("loaded pages", () => {
+	const NEXT = "u33dc0cpn3hy";
+
+	beforeEach(async () => {
+		getGridMock.mockResolvedValueOnce(page([1, 2, 3], { nextPage: 1 }));
+		gridState.retry();
+		await settle();
+		getGridMock.mockResolvedValueOnce(page([4, 5, 6], { nextPage: 2 }));
+		await gridState.loadMore();
+		getGridMock.mockResolvedValueOnce(page([7, 8, 9], { nextPage: 3 }));
+		await gridState.loadMore();
+		getGridMock.mockReset();
+	});
+
+	it("keeps pages past the first through a heartbeat beat", async () => {
+		getGridMock.mockResolvedValue(page([1, 2, 3], { nextPage: 1 }));
+
+		await gridState.refresh({ background: true });
+
+		expect(gridState.items.map((item) => item.id)).toEqual([
+			1, 2, 3, 4, 5, 6, 7, 8, 9,
+		]);
+		expect(gridState.nextPage).toBe(3);
+		expect(getGridMock).toHaveBeenCalledOnce();
+	});
+
+	it("keeps them through a reconcile too", async () => {
+		getGridMock.mockResolvedValue(page([1, 2, 3], { nextPage: 1 }));
+
+		await reconcileHandlers[0]?.();
+
+		expect(gridState.items.map((item) => item.id)).toEqual([
+			1, 2, 3, 4, 5, 6, 7, 8, 9,
+		]);
+		expect(gridState.nextPage).toBe(3);
+		expect(getGridMock).toHaveBeenCalledOnce();
+	});
+
+	it("lets the first page drop and reorder profiles, without duplicating", async () => {
+		getGridMock.mockResolvedValue(page([3, 10, 7], { nextPage: 1 }));
+
+		await gridState.refresh({ background: true });
+
+		expect(gridState.items.map((item) => item.id)).toEqual([
+			3, 10, 7, 4, 5, 6, 8, 9,
+		]);
+	});
+
+	it("starts the grid over for a pull-to-refresh", async () => {
+		getGridMock.mockResolvedValue(page([1, 2, 3], { nextPage: 1 }));
+
+		await gridState.refresh({ keepLoadedPages: false });
+
+		expect(gridState.items.map((item) => item.id)).toEqual([1, 2, 3]);
+		expect(gridState.nextPage).toBe(1);
+	});
+
+	it("starts the grid over when a beat retargets the location", async () => {
+		resolveGeohashMock.mockResolvedValue(NEXT);
+		gridState.viewActive = true;
+		getGridMock.mockResolvedValue(page([10, 11], { nextPage: 1 }));
+
+		await gridState.refresh({ background: true });
+
+		expect(gridState.items.map((item) => item.id)).toEqual([10, 11]);
+		expect(gridState.nextPage).toBe(1);
+	});
+
+	it("keeps a removed tile out of the kept pages", async () => {
+		gridState.removeProfile(5);
+		getGridMock.mockResolvedValue(page([1, 2, 3], { nextPage: 1 }));
+
+		await gridState.refresh({ background: true });
+
+		expect(gridState.items.map((item) => item.id)).toEqual([
+			1, 2, 3, 4, 6, 7, 8, 9,
+		]);
+		expect(getGridMock).toHaveBeenCalledOnce();
+	});
+
+	it("stops paging once the shrunken grid runs out", async () => {
+		getGridMock.mockResolvedValue(page([1, 2, 3], { nextPage: 1 }));
+		await gridState.refresh({ background: true });
+
+		getGridMock.mockResolvedValue(page([]));
+		await gridState.loadMore();
+
+		expect(getGridMock).toHaveBeenLastCalledWith(
+			expect.objectContaining({ pageNumber: 3 }),
+		);
+		expect(gridState.nextPage).toBeNull();
+		expect(gridState.items.map((item) => item.id)).toEqual([
+			1, 2, 3, 4, 5, 6, 7, 8, 9,
+		]);
+	});
+
+	it("skips profiles the next page repeats after a kept refresh", async () => {
+		getGridMock.mockResolvedValue(page([1, 2, 3], { nextPage: 1 }));
+		await gridState.refresh({ background: true });
+
+		getGridMock.mockResolvedValue(page([8, 10, 2, 11], { nextPage: 4 }));
+		await gridState.loadMore();
+
+		expect(gridState.items.map((item) => item.id)).toEqual([
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+		]);
+		expect(gridState.nextPage).toBe(4);
+	});
+
+	it("retries a failed refresh the way it was made", async () => {
+		showErrorToastMock.mockClear();
+		getGridMock.mockRejectedValueOnce(new Error("offline"));
+
+		await gridState.refresh();
+
+		const { onRetry } = showErrorToastMock.mock.calls[0]![0] as {
+			onRetry: () => void;
+		};
+		getGridMock.mockResolvedValue(page([3, 1, 2], { nextPage: 1 }));
+		onRetry();
+
+		await vi.waitFor(() =>
+			expect(gridState.items.map((item) => item.id)).toEqual([
+				3, 1, 2, 4, 5, 6, 7, 8, 9,
+			]),
+		);
+		expect(gridState.nextPage).toBe(3);
+		expect(getGridMock).toHaveBeenCalledTimes(2);
 	});
 });

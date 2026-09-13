@@ -111,7 +111,13 @@ function deferred<T>() {
 	return { promise, resolve };
 }
 
-function tapEvent(senderId: number, recipientId: number) {
+function tapEvent({
+	senderId,
+	recipientId,
+}: {
+	senderId: number;
+	recipientId: number;
+}) {
 	return {
 		type: "tap.v1.tap_sent",
 		notificationId: null,
@@ -212,7 +218,7 @@ describe("TapsState", () => {
 		const state = new TapsState({ ourProfileId: 99 });
 		await waitForLoaded(state);
 
-		emitTap(tapEvent(1, 99));
+		emitTap(tapEvent({ senderId: 1, recipientId: 99 }));
 
 		expect(state.taps[0]?.isFavorite).toBe(true);
 	});
@@ -289,7 +295,7 @@ describe("TapsState", () => {
 		getReceivedTapsMock.mockReturnValueOnce(gate.promise);
 
 		const reconcilePromise = reconcileHandlers[0]?.();
-		emitTap(tapEvent(5, 99));
+		emitTap(tapEvent({ senderId: 5, recipientId: 99 }));
 		gate.resolve({ profiles: [tap(1), tap(2)] });
 		await reconcilePromise;
 
@@ -306,7 +312,7 @@ describe("TapsState", () => {
 		getReceivedTapsMock.mockReturnValueOnce(gate.promise);
 
 		const reconcilePromise = reconcileHandlers[0]?.();
-		emitTap(tapEvent(2, 99));
+		emitTap(tapEvent({ senderId: 2, recipientId: 99 }));
 		gate.resolve({ profiles: [tap(1), tap(2)] });
 		await reconcilePromise;
 
@@ -324,7 +330,7 @@ describe("TapsState", () => {
 
 		expect(state.taps.map((entry) => entry.profileId)).toEqual([2]);
 
-		emitTap(tapEvent(1, 99));
+		emitTap(tapEvent({ senderId: 1, recipientId: 99 }));
 
 		expect(state.taps.map((entry) => entry.profileId)).toEqual([2]);
 
@@ -485,7 +491,7 @@ describe("TapsState unseen marker", () => {
 
 		expect(state.hasUnseen).toBe(false);
 
-		emitTap(tapEvent(5, 99));
+		emitTap(tapEvent({ senderId: 5, recipientId: 99 }));
 		flushSync();
 		stop();
 
@@ -506,7 +512,7 @@ describe("TapsState unseen marker", () => {
 		});
 		flushSync();
 
-		emitTap(tapEvent(5, 99));
+		emitTap(tapEvent({ senderId: 5, recipientId: 99 }));
 		flushSync();
 		stop();
 
@@ -519,11 +525,11 @@ describe("TapsState unseen marker", () => {
 		await waitForLoaded(state);
 		state.markViewed();
 
-		emitTap(tapEvent(5, 7));
+		emitTap(tapEvent({ senderId: 5, recipientId: 7 }));
 
 		expect(state.hasUnseen).toBe(false);
 
-		emitTap(tapEvent(5, 99));
+		emitTap(tapEvent({ senderId: 5, recipientId: 99 }));
 
 		expect(state.hasUnseen).toBe(true);
 	});

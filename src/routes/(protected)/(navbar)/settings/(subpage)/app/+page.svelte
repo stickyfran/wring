@@ -4,12 +4,17 @@
 
 	import ToastUnimplemented from "$lib/components/feedback/ToastUnimplemented.svelte";
 	import * as Item from "$lib/components/ui/item";
-	import { updatesSelfManaged } from "$lib/updates/capability.svelte";
+	import { hapticsAvailable } from "$lib/haptics";
+	import { desktopEntryAvailable } from "$lib/platform/desktop-entry.svelte";
+	import {
+		updatesSelfManaged,
+		updatesUnsupportedReason,
+	} from "$lib/updates/capability.svelte";
+	import AppsMenuEntrySetting from "./AppsMenuEntrySetting.svelte";
 	import AutomaticUpdatesSetting from "./AutomaticUpdatesSetting.svelte";
+	import BackdropBlurSetting from "./BackdropBlurSetting.svelte";
 	import NotificationSettings from "./NotificationSettings.svelte";
-	import RevealMessageReadSetting from "./RevealMessageReadSetting.svelte";
-	import RevealProfileViewSetting from "./RevealProfileViewSetting.svelte";
-	import StayOnlineSetting from "./StayOnlineSetting.svelte";
+	import PreferenceSwitchSetting from "./PreferenceSwitchSetting.svelte";
 	import UnitsSetting from "./UnitsSetting.svelte";
 </script>
 
@@ -48,19 +53,42 @@
 {/snippet}
 <h2>Display</h2>
 <UnitsSetting />
+<BackdropBlurSetting />
+{#if hapticsAvailable()}
+	<PreferenceSwitchSetting
+		preference="hapticFeedback"
+		title="Haptic feedback"
+		description="Play a short tap when a swipe has gone far enough to reply."
+	/>
+{/if}
+{#if desktopEntryAvailable()}
+	<AppsMenuEntrySetting />
+{/if}
 <h2>Notifications</h2>
 <NotificationSettings />
 <h2>Privacy</h2>
-<StayOnlineSetting />
-<RevealMessageReadSetting />
-<RevealProfileViewSetting />
+<PreferenceSwitchSetting
+	preference="stayOnline"
+	title="Stay online while the app is open"
+	description="Refresh your online status in the background automatically, while the app is open."
+/>
+<PreferenceSwitchSetting
+	preference="revealMessageRead"
+	title="Reveal message read status"
+	description="Let others know when you've read their messages. Your read receipts remain unaffected."
+/>
+<PreferenceSwitchSetting
+	preference="revealProfileViews"
+	title="Reveal profile views"
+	description="Let others know when you've viewed their profile. Your profile view history remains unaffected."
+/>
 <h2>Security</h2>
 {@render item({
 	title: "Discreet app icon",
 	unimplemented: { feature: "Discreet app icon", issue: 97 },
 })}
 {@render item({ title: "PIN", unimplemented: { feature: "PIN", issue: 50 } })}
-{#if updatesSelfManaged()}
+{#if updatesSelfManaged() || updatesUnsupportedReason() !== null}
 	<h2>Updates</h2>
 	<AutomaticUpdatesSetting />
 {/if}

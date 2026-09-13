@@ -1,9 +1,11 @@
 pub mod api;
 mod app_settings;
 mod appearance;
+mod appimage;
 mod context_menu;
 mod desktop_entry;
 mod error;
+mod haptics;
 pub mod media;
 mod photo;
 mod scroll_phase;
@@ -17,9 +19,6 @@ use tauri::Manager;
 use crate::state::AppState;
 use crate::storage::{AuthStorage, DeviceStorage, SigningKeyStorage};
 
-// Mirrors MIN_SUPPORTED_WEBVIEW_MAJOR in gen/android/app/build.gradle.kts and the
-// CSS feature floor in src/app.html (Tailwind v4: Chromium 111 / WebKitGTK 2.42 /
-// Safari 16.4). Keep in sync.
 #[cfg(target_os = "windows")]
 const MIN_CHROMIUM_MAJOR: u32 = 111;
 #[cfg(target_os = "linux")]
@@ -155,6 +154,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(api::google_oauth::plugin())
+        .plugin(api::facebook_oauth::plugin())
         .plugin(api::update::plugin())
         .plugin(app_settings::plugin())
         .manage(AppState {
@@ -167,6 +167,11 @@ pub fn run() {
             api::auth::login,
             api::auth::login_with_google,
             api::auth::google_sign_in,
+            api::auth::backend_ready,
+            api::auth::google_handback_pending,
+            api::auth::take_google_handback,
+            api::auth::discard_google_handback,
+            api::auth::login_with_facebook,
             api::auth::refresh_token,
             api::auth::logout,
             api::auth::auth_state,
@@ -177,14 +182,16 @@ pub fn run() {
             api::rest::request,
             api::media_upload::upload_chat_media,
             api::ws::ws_connect,
+            api::ws::ws_reconnect,
             api::ws::ws_send,
             api::client::rotate_api_params,
             api::session_recovery::set_app_active,
             api::session_recovery::session_health,
+            haptics::haptic_threshold_reached,
             scroll_phase::scroll_gesture_capture,
-            desktop_entry::desktop_entry_offer,
+            desktop_entry::desktop_entry_state,
             desktop_entry::desktop_entry_install,
-            desktop_entry::desktop_entry_dismiss,
+            desktop_entry::desktop_entry_remove,
             api::update::commands::update_capability,
             api::update::commands::update_settings,
             api::update::commands::update_set_auto_check,
@@ -198,6 +205,7 @@ pub fn run() {
             api::update::commands::update_open_install_permission_settings,
             api::update::commands::update_discard,
             app_settings::open_app_settings,
+            appearance::backdrop_filter_renders,
         ])
         .setup(|app| {
             scroll_phase::install_scroll_gesture_bridge(app.handle());
@@ -380,5 +388,51 @@ mod tests {
 		] {
 			assert!(!allows(url), "{url} must not load in the main webview");
 		}
+	}
+}
+
+#[cfg(test)]
+mod webview_floor_pins {
+	const THIS: &str = include_str!("lib.rs");
+	const TAURI_CONF: &str = include_str!("../tauri.conf.json");
+	const GRADLE: &str = include_str!("../gen/android/app/build.gradle.kts");
+	const APP_HTML: &str = include_str!("../../src/app.html");
+
+	fn numbers_after<'a>(
+		haystack: &'a str,
+		marker: &str,
+	) -> impl Iterator<Item = u32> + 'a {
+		let at = haystack.find(marker).expect(marker) + marker.len();
+		haystack[at..]
+			.split(|c: char| !c.is_ascii_digit())
+			.filter(|run| !run.is_empty())
+			.map(|run| run.parse().unwrap())
+	}
+
+	#[test]
+	fn every_webview_floor_names_the_same_chromium_major() {
+		let rust =
+			numbers_after(THIS, "const MIN_CHROMIUM_MAJOR: u32 =").next();
+		assert_eq!(
+			rust,
+			numbers_after(TAURI_CONF, "\"minimumWebview2Version\":").next()
+		);
+		assert_eq!(
+			rust,
+			numbers_after(GRADLE, "MIN_SUPPORTED_WEBVIEW_MAJOR\",").next()
+		);
+	}
+
+	#[test]
+	fn the_unsupported_page_names_the_webkitgtk_floor() {
+		let rust: Vec<u32> =
+			numbers_after(THIS, "const MIN_WEBKITGTK: (u32, u32) =")
+				.take(2)
+				.collect();
+		let page: Vec<u32> =
+			numbers_after(APP_HTML, "<code>webkit2gtk</code> (")
+				.take(2)
+				.collect();
+		assert_eq!(rust, page);
 	}
 }

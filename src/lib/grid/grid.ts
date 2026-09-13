@@ -3,6 +3,7 @@ import type z from "zod";
 import { getCascadeV4 } from "$lib/api/browse/grid";
 import { TtlCache } from "$lib/api/cache";
 import { getProfiles } from "$lib/api/users/profiles";
+import { awaitEntitlementGrant } from "$lib/entitlements/bypass.svelte";
 import { now } from "$lib/util/clock";
 import type { cascadeV4ResponseFullProfileV1Schema } from "$lib/model/browse/grid/cascade/response/v4";
 
@@ -72,6 +73,7 @@ function gridProfile(profile: CascadeProfileData): GridProfile {
 }
 
 export async function getGrid(query: Parameters<typeof getCascadeV4>[0]) {
+	await awaitEntitlementGrant();
 	const response = await getCascadeV4(query);
 	const items: GridProfile[] = [];
 
@@ -79,7 +81,6 @@ export async function getGrid(query: Parameters<typeof getCascadeV4>[0]) {
 		if (
 			item.type === "full_profile_v1" ||
 			item.type === "partial_profile_v1" ||
-			item.type === "hidden_profile_v1" ||
 			item.type === "smart_boost_profile_v1"
 		) {
 			items.push(gridProfile(item.data));

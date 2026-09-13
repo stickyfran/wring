@@ -101,12 +101,51 @@ pub async fn google_sign_in(
 }
 
 #[tauri::command]
+pub fn backend_ready(state: tauri::State<'_, AppState>) -> bool {
+	state.client().is_ok()
+}
+
+#[tauri::command]
+pub fn google_handback_pending(app: tauri::AppHandle) -> bool {
+	super::google_oauth::handback_pending(&app)
+}
+
+#[tauri::command]
+pub async fn take_google_handback(
+	app: tauri::AppHandle,
+	state: tauri::State<'_, AppState>,
+) -> Result<Option<LoginResult>, AppError> {
+	let Some(token) = super::google_oauth::take_handback(&app) else {
+		return Ok(None);
+	};
+	let result = state.client()?.google_sign_in(&token).await?;
+	Ok(Some(LoginResult::from(result)))
+}
+
+#[tauri::command]
+pub fn discard_google_handback(app: tauri::AppHandle) {
+	super::google_oauth::discard_handback(&app);
+}
+
+#[tauri::command]
+pub async fn login_with_facebook(
+	app: tauri::AppHandle,
+	state: tauri::State<'_, AppState>,
+) -> Result<LoginResult, AppError> {
+	let access_token =
+		super::facebook_oauth::fetch_facebook_access_token(&app).await?;
+	let result = state.client()?.facebook_sign_in(&access_token).await?;
+	Ok(LoginResult::from(result))
+}
+
+#[tauri::command]
 pub async fn refresh_token(
 	state: tauri::State<'_, AppState>,
+	geohash: Option<String>,
 ) -> Result<LoginResult, AppError> {
 	let client = state.client()?;
 	let result = client
-		.refresh_token()
+		.refresh_token_with_geohash(geohash.as_deref())
 		.await
 		.map_err(|e| AppError::from_client_error(e, client))?;
 	Ok(LoginResult::from(result))
@@ -114,6 +153,7 @@ pub async fn refresh_token(
 
 #[tauri::command]
 pub async fn logout(
+	app: tauri::AppHandle,
 	state: tauri::State<'_, AppState>,
 	media: tauri::State<'_, MediaProxy>,
 ) -> Result<(), AppError> {
@@ -123,6 +163,7 @@ pub async fn logout(
 	AuthStorage::delete_credentials();
 	SigningKeyStorage::delete();
 	media.forget_everything().await;
+	super::facebook_oauth::forget_sign_in_profile(&app).await;
 
 	let new_device = grindr::DeviceInfo::generate();
 	if let Err(e) = DeviceStorage::save(&new_device) {

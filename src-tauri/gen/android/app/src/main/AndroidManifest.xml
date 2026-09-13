@@ -3,14 +3,19 @@
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 	<uses-permission android:name="android.permission.VIBRATE" />
+
+	<uses-permission android:name="org.opengrind.google_oauth.permission.REQUEST_TOKEN" />
+
+	<permission
+		android:name="org.opengrind.permission.RECEIVE_GOOGLE_TOKEN"
+		android:protectionLevel="signature" />
+
+	<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
 	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 	<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-	<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-
-	<uses-permission android:name="org.opengrind.google_oauth.permission.REQUEST_TOKEN" />
 
 	<queries>
 		<package android:name="org.opengrind.google_oauth" />
@@ -39,6 +44,22 @@
 				<category android:name="android.intent.category.LEANBACK_LAUNCHER" />
 			</intent-filter>
 		</activity>
+
+		<activity
+			android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+			android:label="@string/main_activity_title"
+			android:name=".FacebookOauthActivity"
+			android:exported="false"
+			android:excludeFromRecents="true" />
+
+		<activity
+			android:name=".TokenHandoffActivity"
+			android:exported="true"
+			android:permission="org.opengrind.permission.RECEIVE_GOOGLE_TOKEN"
+			android:excludeFromRecents="true"
+			android:persistableMode="persistNever"
+			android:taskAffinity=""
+			android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
 		<service
 			android:name="org.opengrind.update.TransferService"

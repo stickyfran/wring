@@ -17,7 +17,10 @@ export async function signOut(): Promise<void> {
 	clearNativeCredentials();
 
 	await goto("/auth/sign-in");
+	await clearAccountState();
+}
 
+export async function clearAccountState(): Promise<void> {
 	for (const marker of [inboxLastViewed, tapsLastViewed])
 		marker.clearStored();
 	clearAccountCaches();

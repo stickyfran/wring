@@ -3,6 +3,7 @@
 
 	import ApiErrorDisplay from "$lib/components/feedback/ApiErrorDisplay.svelte";
 	import DataRefreshControl from "$lib/components/feedback/DataRefreshControl.svelte";
+	import ScrollToTopButton from "$lib/components/shared/ScrollToTopButton.svelte";
 	import Skeleton from "$lib/components/ui/skeleton/skeleton.svelte";
 	import { getTapsState } from "$lib/interest/taps-state.svelte";
 	import { observeIntersection } from "$lib/util/observe-intersection";
@@ -34,7 +35,7 @@
 		onscroll={() => (taps.scrollY = container?.scrollTop ?? 0)}
 	>
 		<div
-			class="mx-auto flex min-h-overscrollable w-full max-w-120 flex-col gap-1 px-4 pt-16 pb-nav-clear"
+			class="mx-auto flex min-h-overscrollable w-full max-w-120 flex-col gap-1 px-4 pt-header-clear-16 pb-nav-clear"
 		>
 			{#if taps.loading}
 				{#each Array(8)}
@@ -74,4 +75,5 @@
 			onrefresh={() => void taps.refresh()}
 		/>
 	{/if}
+	<ScrollToTopButton {container} class="bottom-nav-clear" />
 </div>

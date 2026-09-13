@@ -91,6 +91,12 @@ export type ChatV1ConversationReadEventPayload = z.infer<
 
 export type WsStatus = "disconnected" | "connected";
 
+function errorBody(payload: unknown): string {
+	return payload === undefined || payload === null
+		? ""
+		: JSON.stringify(payload);
+}
+
 class WsState {
 	status = $state<WsStatus>("disconnected");
 	#rejectedHandlers = new Set<(eventType: string) => void>();
@@ -119,6 +125,12 @@ class WsState {
 	connect(): void {
 		invoke("ws_connect").catch((e: unknown) => {
 			console.error("[ws] connect failed", e);
+		});
+	}
+
+	async reconnect(): Promise<void> {
+		await invoke("ws_reconnect").catch((e: unknown) => {
+			console.error("[ws] reconnect failed", e);
 		});
 	}
 
@@ -207,7 +219,10 @@ class WsState {
 								new ApiError({
 									message: `websocket command ${type} failed`,
 									request,
-									response: { status, body: "" },
+									response: {
+										status,
+										body: errorBody(response.payload),
+									},
 								}),
 							);
 							return;

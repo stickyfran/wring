@@ -3,16 +3,21 @@
 	import "@fontsource-variable/ibm-plex-sans/wght-italic.css";
 
 	import "../layout.css";
+	import { beforeNavigate } from "$app/navigation";
 	import { page } from "$app/state";
 	import { IconContext } from "phosphor-svelte";
 	import { onMount } from "svelte";
 	import { Toaster } from "svelte-sonner";
 
+	import { startGoogleHandbackWatch } from "$lib/api/google-handback";
 	import {
-		getPreferencesSnapshot,
 		hydratePreferences,
 		preferencesLoaded,
+		preferencesSnapshot,
 	} from "$lib/app-data/preferences.svelte";
+	import { abortBackdropBlurTrialGesture } from "$lib/blur/calibration/trial.svelte";
+	import { hydrateBackdropCompositing } from "$lib/blur/compositing.svelte";
+	import { applyBackdropBlurQuality } from "$lib/blur/quality.svelte";
 	import {
 		applyAndroidInsets,
 		applyBackGestureHandler,
@@ -62,6 +67,9 @@
 			.catch((error: unknown) => {
 				console.error("Failed to hydrate preferences", error);
 			});
+		void hydrateBackdropCompositing().catch((error: unknown) => {
+			console.error("Failed to read backdrop compositing", error);
+		});
 		return releaseZoomBlock;
 	});
 
@@ -70,7 +78,8 @@
 	import faviconPng from "$lib/assets/favicon.png";
 	import AccountStatusAlert from "$lib/components/feedback/AccountStatusAlert.svelte";
 	import CopyErrorConfirmAlert from "$lib/components/feedback/CopyErrorConfirmAlert.svelte";
-	import DesktopEntryAlert from "$lib/components/feedback/DesktopEntryAlert.svelte";
+	import EntitlementBypassAlert from "$lib/components/feedback/EntitlementBypassAlert.svelte";
+	import GoogleHandbackConfirmAlert from "$lib/components/feedback/GoogleHandbackConfirmAlert.svelte";
 	import RequestBlockedAlert from "$lib/components/feedback/RequestBlockedAlert.svelte";
 	import SessionErrorAlert from "$lib/components/feedback/SessionErrorAlert.svelte";
 	import faviconSvg from "../../contrib/logo/open-grind.svg";
@@ -78,13 +87,27 @@
 	let { children }: { children?: import("svelte").Snippet } = $props();
 
 	const onboarded = $derived(
-		preferencesLoaded() && getPreferencesSnapshot().onboardingComplete,
+		preferencesLoaded() && preferencesSnapshot().onboardingComplete,
 	);
+
+	beforeNavigate(() => abortBackdropBlurTrialGesture());
+
+	$effect(() => {
+		applyBackdropBlurQuality();
+	});
 
 	$effect(() => {
 		if (!onboarded) return;
 		if (!updatesSelfManaged()) return;
 		void startUpdateWatch();
+	});
+
+	$effect(() => {
+		if (!onboarded) return;
+		const watch = startGoogleHandbackWatch();
+		return () => {
+			void watch.then((stop) => stop());
+		};
 	});
 
 	const hasBottomNavBar = $derived(
@@ -135,5 +158,6 @@
 	<SessionErrorAlert />
 	<AccountStatusAlert />
 	<CopyErrorConfirmAlert />
-	<DesktopEntryAlert />
+	<GoogleHandbackConfirmAlert />
+	<EntitlementBypassAlert />
 </IconContext>

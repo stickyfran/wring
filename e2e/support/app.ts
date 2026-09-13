@@ -5,8 +5,8 @@ export const DEMO_GEOHASH = "u33dc0cpgp00";
 
 declare global {
 	interface Window {
+		__capturedInvokes?: Record<string, unknown[]>;
 		__emitTauriEvent?: (event: string, payload: unknown) => void;
-		__openedUrls?: string[];
 	}
 }
 
@@ -54,22 +54,47 @@ export async function installEventInjection(page: Page): Promise<void> {
 	});
 }
 
+export async function captureInvokes(page: Page, command: string) {
+	await page.evaluate((watched) => {
+		if (!window.__capturedInvokes) {
+			const captured: Record<string, unknown[]> = {};
+			window.__capturedInvokes = captured;
+			const internals = (
+				window as unknown as { __TAURI_INTERNALS__: TauriInternals }
+			).__TAURI_INTERNALS__;
+			const passThrough = internals.invoke;
+			internals.invoke = (cmd, args, opts) => {
+				captured[cmd]?.push(args ?? null);
+				return passThrough(cmd, args, opts);
+			};
+		}
+		window.__capturedInvokes[watched] = [];
+	}, command);
+	return () =>
+		page.evaluate(
+			(watched) => window.__capturedInvokes?.[watched] ?? [],
+			command,
+		);
+}
+
 export async function captureOpenedUrls(page: Page) {
-	await page.evaluate(() => {
-		const internals = (
-			window as unknown as { __TAURI_INTERNALS__: TauriInternals }
-		).__TAURI_INTERNALS__;
-		const passThrough = internals.invoke;
-		const opened: string[] = [];
-		window.__openedUrls = opened;
-		internals.invoke = (cmd, args, opts) => {
-			if (cmd === "plugin:opener|open_url") {
-				opened.push((args as { url: string }).url);
-			}
-			return passThrough(cmd, args, opts);
-		};
-	});
-	return () => page.evaluate(() => window.__openedUrls);
+	const opened = await captureInvokes(page, "plugin:opener|open_url");
+	return async () =>
+		(await opened()).map((args) => (args as { url: string }).url);
+}
+
+export function flownIn(page: Page, button: string): Promise<unknown> {
+	return page.evaluate(
+		(selector) =>
+			Promise.all(
+				(
+					document
+						.querySelector(selector)
+						?.parentElement?.getAnimations() ?? []
+				).map((animation) => animation.finished.catch(() => undefined)),
+			),
+		button,
+	);
 }
 
 export const GRID_READY_SELECTOR = '[aria-label="All filters"]';
@@ -78,16 +103,21 @@ export async function ensureGridLocation(page: Page): Promise<void> {
 	const allFilters = page.locator(GRID_READY_SELECTOR);
 	if ((await allFilters.count()) === 0) {
 		// tinykeys reads navigator.platform, so the CI runner wants Control
-		await page.keyboard.press("ControlOrMeta+k");
-		const palette = page.getByRole("combobox");
-		await palette.waitFor();
-		await palette.fill(`@${DEMO_GEOHASH}`);
-		await page
-			.locator(`[role="option"][data-value="@${DEMO_GEOHASH}"]`)
-			.waitFor();
-		await page.keyboard.press("Enter");
+		await runPaletteCommand(page, `@${DEMO_GEOHASH}`);
 	}
 	await allFilters.waitFor({ timeout: 60_000 });
+}
+
+export async function runPaletteCommand(
+	page: Page,
+	command: string,
+): Promise<void> {
+	await page.keyboard.press("ControlOrMeta+k");
+	const palette = page.getByRole("combobox");
+	await palette.waitFor();
+	await palette.fill(command);
+	await page.locator(`[role="option"][data-value="${command}"]`).waitFor();
+	await page.keyboard.press("Enter");
 }
 
 // The platform decides which wheel path the app takes: "macos" (the

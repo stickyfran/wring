@@ -14,6 +14,7 @@
 	import { capText } from "$lib/api/redact/text";
 	import {
 		clearSessionError,
+		sessionErrorKinds,
 		sessionErrorState,
 	} from "$lib/api/session-error-state.svelte";
 	import { sessionRecovery } from "$lib/api/session-recovery.svelte";
@@ -26,19 +27,7 @@
 	const payloadSchema = z.object({
 		message: z.string(),
 		unauthorized: z.boolean(),
-		kind: z
-			.enum([
-				"Http",
-				"RateLimited",
-				"RequestBlocked",
-				"NetworkBlocked",
-				"Unauthorized",
-				"Auth",
-				"Api",
-				"Banned",
-				"NotLoggedIn",
-			])
-			.catch("Http"),
+		kind: z.enum(sessionErrorKinds).catch("Http"),
 		attempts: z.number().catch(0),
 		transient: z.boolean().catch(true),
 	});
@@ -97,6 +86,7 @@
 				};
 			case "Api":
 			case "Auth":
+			case "SessionStale":
 				return {
 					title: "Grindr refused your session",
 					description:

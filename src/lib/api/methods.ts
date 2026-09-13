@@ -1,7 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import z from "zod";
 
-import { type ApiErrorKind, apiErrorKinds } from "$lib/api/api-error";
+import {
+	type ApiErrorKind,
+	apiErrorKinds,
+	blockedAndStaleMessages,
+} from "$lib/api/api-error";
 import { capText } from "$lib/api/redact/text";
 import { summariseNonJson } from "$lib/api/redact/value";
 import {
@@ -9,6 +13,7 @@ import {
 	type RequestBlockKind,
 } from "$lib/api/request-blocked-state.svelte";
 import { demoCallMethod, demoEnabled } from "$lib/demo";
+import { geohashSchema } from "$lib/model/geohash";
 
 const maxPrettyMessageChars = 200;
 
@@ -18,8 +23,7 @@ const connectionFailedMessage =
 	"Couldn't connect to Grindr. Check your internet connection and try again.";
 
 const messagelessMessages: Partial<Record<ApiErrorKind, string>> = {
-	RequestBlocked: "Grindr is blocking your requests",
-	NetworkBlocked: "Something blocked the request before it reached Grindr",
+	...blockedAndStaleMessages,
 	RateLimited: "Grindr is rate limiting us",
 	NotLoggedIn: "You're signed out",
 };
@@ -46,7 +50,7 @@ export const restrictionSchema = z.object({
 });
 export type Restriction = z.infer<typeof restrictionSchema>;
 
-const loginResultSchema = z.object({
+export const loginResultSchema = z.object({
 	profileId: z.coerce.number().int().nonnegative(),
 	restriction: restrictionSchema.nullish(),
 });
@@ -67,6 +71,10 @@ export const methods = {
 		request: z.object({ token: z.string().min(1) }),
 		response: loginResultSchema,
 	},
+	login_with_facebook: {
+		request: z.undefined(),
+		response: loginResultSchema,
+	},
 	auth_state: {
 		request: z.undefined(),
 		response: z.int().nonnegative().nullable(),
@@ -83,7 +91,10 @@ export const methods = {
 		request: z.undefined(),
 		response: z.enum(["keyring", "file", "unavailable"]),
 	},
-	refresh_token: { request: z.undefined(), response: loginResultSchema },
+	refresh_token: {
+		request: z.object({ geohash: geohashSchema.optional() }).optional(),
+		response: loginResultSchema,
+	},
 	rotate_api_params: {
 		request: z.undefined(),
 		response: z.object({
@@ -112,8 +123,8 @@ export const methods = {
 
 export async function callMethod<T extends keyof typeof methods>(
 	method: T,
-	...args: z.infer<(typeof methods)[T]["request"]> extends undefined
-		? []
+	...args: undefined extends z.infer<(typeof methods)[T]["request"]>
+		? [data?: z.infer<(typeof methods)[T]["request"]>]
 		: [data: z.infer<(typeof methods)[T]["request"]>]
 ): Promise<z.infer<(typeof methods)[T]["response"]>> {
 	type Result = z.infer<(typeof methods)[T]["response"]>;

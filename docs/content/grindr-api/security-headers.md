@@ -11,8 +11,8 @@ Security headers are HTTP headers that the Grindr API requires to be present and
   - [`L-Grindr-Roles`](#l-grindr-roles)
   - [Device-key upload signing](#device-key-upload-signing)
     - [The device key](#the-device-key)
-    - [1. Register the key](#1-register-the-key)
-    - [2. Sign each upload](#2-sign-each-upload)
+    - [1. Register the key](#register-the-key)
+    - [2. Sign each upload](#sign-each-upload)
     - [Signing errors](#signing-errors)
   - [Correct headers order](#correct-headers-order)
   - [Fingerprint](#fingerprint)
@@ -21,10 +21,10 @@ Security headers are HTTP headers that the Grindr API requires to be present and
     - [TLS fingerprint](#tls-fingerprint)
       - [Cipher suites](#cipher-suites)
       - [Extensions](#extensions)
-    - [HTTP/2 fingerprint](#http2-fingerprint)
+    - [HTTP/2 fingerprint](#http-2-fingerprint)
       - [Frames](#frames)
       - [Pseudoheaders](#pseudoheaders)
-    - [JA3/JA4 fingerprint hashes](#ja3ja4-fingerprint-hashes)
+    - [JA3/JA4 fingerprint hashes](#ja3-ja4-fingerprint-hashes)
 
 ## `Accept`
 
@@ -84,7 +84,7 @@ Starting with app version 26.10.0, the media-upload endpoints are protected by a
 - `POST /v5/media/upload` — profile images (signed successor of the unsigned `POST /v4/media/upload`, see [Upload media (signed)](/grindr-api/users/profiles#upload-media-signed))
 - `POST /v6/chat/media/upload` — chat / drawer media (signed successor of the unsigned `POST /v5/chat/media/upload`, see [Upload media (signed)](/grindr-api/messaging/drawer#upload-media-signed))
 
-The registration endpoints live under [Media](/grindr-api/media). The unsigned versions still respond, and signing is not an upgrade of them: the official client signs only in-app camera captures, and media uploaded through a signed path stays marked as taken on Grindr.
+The registration endpoints live under [Media -> Device keys](/grindr-api/media/device-keys). The unsigned versions still respond, and signing is not an upgrade of them: the official client signs only in-app camera captures, and media uploaded through a signed path stays marked as taken on Grindr.
 
 Every binary value in this scheme (`publicKey`, `keyId`, signatures, `nonce`, body hash) is **base64url without padding** — the URL-safe alphabet (`-` and `_`), no trailing `=`. Every signature is **`SHA256withECDSA`** (ECDSA on the NIST P-256 / secp256r1 curve with SHA-256), serialized as an **ASN.1 DER** sequence and then base64url-encoded.
 
@@ -100,7 +100,7 @@ Generate one **P-256 (secp256r1)** key pair per session (the official app stores
 - `publicKey` = `base64url( SubjectPublicKeyInfo DER )` — the X.509 SPKI (`spki`) encoding of the public key.
 - `keyId` = `base64url( SHA-256( SubjectPublicKeyInfo DER ) )` — SHA-256 over the exact same SPKI bytes.
 
-### 1. Register the key
+### 1. Register the key {#register-the-key}
 
 Both calls require [Authorization](/grindr-api/api-authorization). First fetch a challenge:
 
@@ -138,7 +138,7 @@ Body (`RegisterKeyRequest`):
 
 Response (`RegisterKeyResponse`): `{ "keyId": "<keyId>" }`, echoing the accepted key id.
 
-### 2. Sign each upload
+### 2. Sign each upload {#sign-each-upload}
 
 For every signed upload, compute three per-request values:
 

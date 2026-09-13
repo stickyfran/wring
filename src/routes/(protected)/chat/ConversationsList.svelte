@@ -6,6 +6,7 @@
 	import { getConversations } from "$lib/chat/conversations-context.svelte";
 	import ApiErrorDisplay from "$lib/components/feedback/ApiErrorDisplay.svelte";
 	import DataRefreshControl from "$lib/components/feedback/DataRefreshControl.svelte";
+	import ScrollToTopButton from "$lib/components/shared/ScrollToTopButton.svelte";
 	import Skeleton from "$lib/components/ui/skeleton/skeleton.svelte";
 	import { dismissOnBackGesture } from "$lib/platform/back-gesture-event.svelte";
 	import { below } from "$lib/util/breakpoints.svelte";
@@ -13,10 +14,10 @@
 	import { SelectionSet } from "$lib/util/selection.svelte";
 	import type { ConversationsState } from "$lib/chat/conversations-state.svelte";
 	import Conversation from "./Conversation.svelte";
-	import ConversationsFilters from "./ConversationsFilters.svelte";
 	import ConversationsPagingTail from "./ConversationsPagingTail.svelte";
 	import ConversationsSelectionBar from "./ConversationsSelectionBar.svelte";
 	import DeleteConversationsDialog from "./DeleteConversationsDialog.svelte";
+	import ConversationsFilters from "./filters/ConversationsFilters.svelte";
 	import LazyConversation from "./LazyConversation.svelte";
 
 	const EAGER_COUNT = 10;
@@ -184,8 +185,9 @@
 			class={[
 				"flex min-h-0 flex-1 flex-col gap-1 overflow-auto overscroll-contain px-4",
 				{
-					"pt-15": !selecting,
-					"pt-(--selection-bar-height)": selecting,
+					"pt-header-clear-15": !selecting,
+					"pt-[calc(var(--selection-bar-height)+var(--bar-content-gap))]":
+						selecting,
 				},
 				className,
 			]}
@@ -236,7 +238,7 @@
 						paging={conversations.paging}
 						hasMore={conversations.nextPage !== null}
 						listEmpty={tabEntries.length === 0}
-						filtered={conversations.filters.active.length > 0}
+						filtered={conversations.filters.filtered}
 						tab={activeTab}
 					/>
 				</div>
@@ -250,10 +252,11 @@
 				onrefresh={() => void conversations.refresh()}
 			/>
 		{/if}
+		<ScrollToTopButton {container} class="bottom-(--nav-clear)" />
 		{#if activeTab === "inbox"}
 			<ConversationsFilters
 				filters={conversations.filters}
-				onchange={(active) => conversations.setFilters(active)}
+				onchange={(values) => conversations.setFilters(values)}
 				inert={selecting}
 			/>
 		{/if}
