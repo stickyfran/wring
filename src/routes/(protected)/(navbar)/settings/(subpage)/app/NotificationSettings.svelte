@@ -3,8 +3,8 @@
 
 	import { showErrorToast } from "$lib/api/error-toast";
 	import {
-		getPreferencesSnapshot,
 		preferencesLoaded,
+		preferencesSnapshot,
 		setPreferences,
 	} from "$lib/app-data/preferences.svelte";
 	import { Button } from "$lib/components/ui/button";
@@ -21,7 +21,7 @@
 		syncBackgroundServiceState,
 	} from "$lib/platform/notifications";
 
-	const prefs = $derived(getPreferencesSnapshot());
+	const prefs = $derived(preferencesSnapshot());
 
 	let testingNtfy = $state(false);
 

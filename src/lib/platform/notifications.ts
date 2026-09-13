@@ -1,5 +1,5 @@
 import { callMethod } from "$lib/api/methods";
-import { getPreferencesSnapshot } from "$lib/app-data/preferences.svelte";
+import { preferencesSnapshot } from "$lib/app-data/preferences.svelte";
 import type { Conversation } from "$lib/model/messaging/conversations";
 import type { ApiResponseMessage } from "$lib/model/messaging/messages";
 
@@ -12,7 +12,7 @@ export async function sendNtfyPush({
 	body: string;
 	conversationId?: string;
 }): Promise<boolean> {
-	const prefs = getPreferencesSnapshot();
+	const prefs = preferencesSnapshot();
 	if (!prefs.ntfyEnabled || !prefs.ntfyTopic.trim()) return false;
 
 	let baseUrl = prefs.ntfyServer.trim().replace(/\/+$/, "");
@@ -151,7 +151,7 @@ export function requestSystemNotificationPermission(): void {
 
 export function syncBackgroundServiceState(): void {
 	if (typeof window === "undefined" || !window.__AndroidNotification) return;
-	const prefs = getPreferencesSnapshot();
+	const prefs = preferencesSnapshot();
 	if (prefs.backgroundService) {
 		window.__AndroidNotification.startBackgroundService?.();
 	} else {
