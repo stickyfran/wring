@@ -6,6 +6,7 @@
 	import * as Item from "$lib/components/ui/item";
 	import { hapticsAvailable } from "$lib/haptics";
 	import { desktopEntryAvailable } from "$lib/platform/desktop-entry.svelte";
+	import { addonInstallerAvailable } from "$lib/updates/addon.svelte";
 	import {
 		updatesSelfManaged,
 		updatesUnsupportedReason,
@@ -88,7 +89,7 @@
 	unimplemented: { feature: "Discreet app icon", issue: 97 },
 })}
 {@render item({ title: "PIN", unimplemented: { feature: "PIN", issue: 50 } })}
-{#if updatesSelfManaged() || updatesUnsupportedReason() !== null}
+{#if updatesSelfManaged() || updatesUnsupportedReason() !== null || addonInstallerAvailable()}
 	<h2>Updates</h2>
 	<AutomaticUpdatesSetting />
 {/if}

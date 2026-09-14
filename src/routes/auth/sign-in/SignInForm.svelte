@@ -7,11 +7,13 @@
 
 	import { callMethod } from "$lib/api/methods";
 	import {
+		companionDisabled,
 		companionUnavailable,
 		companionUntrusted,
+		disabledCompanionMessage,
 		finishSignIn,
 		reportSignInFailure,
-		untrustedCompanionMessage,
+		untrustedCompanionCopy,
 	} from "$lib/api/sign-in";
 	import { Button } from "$lib/components/ui/button";
 	import * as Card from "$lib/components/ui/card";
@@ -35,9 +37,11 @@
 			label: "Google",
 			failures: {
 				[companionUnavailable]: () => void goto("/auth/sign-in/google"),
+				[companionDisabled]: () =>
+					toast.error(disabledCompanionMessage),
 				[companionUntrusted]: () => {
-					toast.error(untrustedCompanionMessage);
-					void goto("/auth/sign-in/google");
+					toast.error(untrustedCompanionCopy());
+					void goto("/auth/sign-in/google?paste");
 				},
 			},
 		},
@@ -185,9 +189,10 @@
 				type="submit"
 				class="w-full"
 				disabled={submitting !== false}
+				aria-busy={submitting === "password"}
 			>
 				{#if submitting === "password"}
-					<Spinner />
+					<Spinner aria-hidden="true" />
 				{/if}
 				Sign in
 			</Button>
@@ -196,10 +201,11 @@
 				variant="outline"
 				class="w-full"
 				disabled={submitting !== false}
+				aria-busy={submitting === "google"}
 				onclick={() => signInWith("google")}
 			>
 				{#if submitting === "google"}
-					<Spinner />
+					<Spinner aria-hidden="true" />
 				{:else}
 					<SiGoogle class="size-4" aria-hidden="true" />
 				{/if}
@@ -210,10 +216,11 @@
 				variant="outline"
 				class="w-full"
 				disabled={submitting !== false}
+				aria-busy={submitting === "facebook"}
 				onclick={() => signInWith("facebook")}
 			>
 				{#if submitting === "facebook"}
-					<Spinner />
+					<Spinner aria-hidden="true" />
 				{:else}
 					<SiFacebook class="size-4" aria-hidden="true" />
 				{/if}
