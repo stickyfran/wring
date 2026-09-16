@@ -39,6 +39,7 @@
 		onUnsend,
 		onCopyError,
 		onReply,
+		onReport,
 	}: {
 		message: ApiResponseMessage;
 		isOut: boolean;
@@ -53,6 +54,7 @@
 		onUnsend?: () => void;
 		onCopyError?: () => void;
 		onReply?: () => void;
+		onReport?: () => void;
 	} = $props();
 
 	const swipe = untrack(() =>
@@ -346,6 +348,7 @@
 		{onUnsend}
 		{onCopyError}
 		{onReply}
+		{onReport}
 		{onReact}
 	/>
 {/if}
