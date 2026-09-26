@@ -424,11 +424,6 @@ class MainActivity : TauriActivity() {
 			ViewCompat.onApplyWindowInsets(view, insets)
 		}
 	}
-	
-	override fun onNewIntent(intent: Intent) {
-		setIntent(intent)
-		super.onNewIntent(intent)
-	}
 
 	override fun onWebViewCreate(webView: WebView) {
 		super.onWebViewCreate(webView)
