@@ -39,7 +39,7 @@ Projects reference:
 - **[grindr.rs](https://git.opengrind.org/open-grind/grindr.rs) Rust crate** — Grindr API transport layer, authentication, network calls
 - **[Grindr Google OAuth WebExtension](https://git.opengrind.org/open-grind/grindr-google-oauth-webextension)** — a web browser extension that extracts a Google OAuth token for Grindr (used for Sign in with Google)
 - **[Open Grind](https://git.opengrind.org/open-grind/open-grind)** — cross-platform Tauri application using **grindr.rs** and sharing code from **Grindr Google OAuth WebExtension** for non-Android Google OAuth flow
-- **[Open Grind Google OAuth Android App](https://git.opengrind.org/open-grind/open-grind-google-oauth-android-app)** — a companion Android-only app that renders Geckoview with **Grindr Google OAuth WebExtension** embedded, needed because Android system's WebView blocks the Google OAuth page
+- **[Open Grind Google OAuth Android App](https://git.opengrind.org/open-grind/google-oauth-app)** — a companion Android-only app that renders Geckoview with **Grindr Google OAuth WebExtension** embedded, needed because Android system's WebView blocks the Google OAuth page
 - **[Grindr Web Unlock](https://git.opengrind.org/open-grind/grindr-web-unlock)** — separate web browser extension that bypasses web.grindr.com client-side paywall
 - **[Grindr API developer tool](https://git.opengrind.org/open-grind/grindr-api-dev-tool)** — Desktop Tauri app that handles API authorization, security headers, request fingerprints for you and provides type hints for known fields
 
@@ -87,10 +87,10 @@ const securityHeaders = {
 	requireRealDeviceInfo: "true",
 	"L-Time-Zone": "Europe/Madrid",
 	"User-Agent":
-		"grindr3/25.20.0.147239;147239;Free;Android 13;Pixel 7;Google",
+		"grindr3/26.17.0.181424;181424;Free;Android 13;Pixel 7;Google",
 	"L-Device-Info":
 		"1fAf9fB2aFfd47Fd;GLOBAL;2;3543028095;2400x1080;a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-	// modify L-Device-Info values randomly if you're getting ACCOUNT_BANNED at login stage
+	// modify L-Device-Info values randomly if you're getting ACCOUNT_BANNED at sign-in
 	// more info about these headers in docs: ./docs/content/grindr-api/security-headers.md
 };
 
@@ -100,7 +100,7 @@ const req = await fetch("https://grindr.mobi/v8/sessions", {
 	body: JSON.stringify({
 		email: "yourmail@example.org",
 		password:
-			"comment out this field after you log in once, use authToken to refresh session",
+			"comment out this field after you sign in once, use authToken to refresh session",
 		// authToken:
 		//	"just reuse any of previous authTokens, even expired",
 		token: null,
@@ -211,12 +211,18 @@ End-to-end tests are a separate tier:
 Local updater testing:
 
 ```sh
-bun run dev:updater-server   # generates a dev minisign key, signs a payload, prints two exports
+ARTIFACT=zip bun run dev:updater-server   # ARTIFACT is apk, deb, AppImage, exe or zip; generates a dev minisign key, signs a payload, prints two exports
 export OPEN_GRIND_UPDATE_ORIGIN=http://127.0.0.1:8787/
 export OPEN_GRIND_UPDATE_KEY=<printed key>
 ```
 
-Both variables are read only under `debug_assertions` ([dev.rs](./src-tauri/src/api/update/dev.rs)). Run `adb reverse tcp:8787 tcp:8787` to tunnel to an Android device. On Android the debug build instead reads the same two assignments from `/data/local/tmp/open-grind-update.env` on the device — `e2e/updater/run.ts android` pushes it automatically, or `adb push` it when testing by hand. `cargo test --lib -- --ignored live_` runs the end-to-end check, download and signature tests against it.
+Both variables are read only under `debug_assertions` ([dev.rs](./src-tauri/src/api/update/dev.rs)). Run `adb reverse tcp:8787 tcp:8787` to tunnel to an Android device. On Android the debug build instead reads the same two assignments from `/data/local/tmp/open-grind-update.env` on the device — `e2e/updater/run.ts android` pushes it automatically, or `adb push` it when testing by hand.
+
+The dev server also serves a Google OAuth app release when given `COMPANION_PAYLOAD=<apk>` (tag `COMPANION_TAG`, default `v99.0.0`; `COMPANION_ABI` one of `arm64-v8a`, `v7a`, `x86_64`, default `arm64-v8a`); without `PAYLOAD`, `APP_BUNDLE`, `ARTIFACT` or `SUFFIX` it serves only the companion.
+
+`cargo test --lib -- --ignored live_` runs the end-to-end check, download and signature tests against the dev server. It needs both releases: this machine's app artifact (`ARTIFACT=zip` on macOS) and `COMPANION_PAYLOAD` with the default `COMPANION_ABI`. When serving only the app, run `cargo test --lib -- --ignored live_published live_release_host` instead.
+
+`e2e/updater/run.ts android-addon` drives the guided companion runs on a device, with `ADDON` set to `install` (default) or `update`. `ADDON=install` uninstalls the companion and serves the published `COMPANION_RELEASE`, downloaded and verified against the minisign key in [KEYS.md](./KEYS.md). A local `COMPANION_APK` is not checked against that key and must be signed with the release keystore: a companion with another signer is never offered an update, and sign-in refuses it. `ADDON=update` installs it first and re-serves it under the next patch tag, or `COMPANION_TAG`. The companion ABI follows `ABI`.
 
 `bun ci` also installs a pre-commit hook ([lefthook](https://lefthook.dev/), configured in [lefthook.yml](./lefthook.yml)) that runs over staged files only:
 

@@ -1,30 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { androidFsMock, openMock, platformMock, readFileMock } = vi.hoisted(
-	() => ({
-		androidFsMock: {
-			getMimeType: vi.fn(),
-			readFile: vi.fn(),
-			showOpenFilePicker: vi.fn(),
-		},
-		openMock: vi.fn(),
-		platformMock: vi.fn(),
-		readFileMock: vi.fn(),
-	}),
-);
+const { androidFsMock, openMock, platformMock } = vi.hoisted(() => ({
+	androidFsMock: { showOpenFilePicker: vi.fn() },
+	openMock: vi.fn(),
+	platformMock: vi.fn(),
+}));
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: openMock }));
-vi.mock("@tauri-apps/plugin-fs", () => ({ readFile: readFileMock }));
 vi.mock("@tauri-apps/plugin-os", () => ({ platform: platformMock }));
 vi.mock("tauri-plugin-android-fs-api", () => ({ AndroidFs: androidFsMock }));
 
 import type { AndroidFsUri } from "tauri-plugin-android-fs-api";
 
-import {
-	pickMedia,
-	pickMultipleMedia,
-	readMediaBytes,
-} from "$lib/platform/media-picker";
+import { pickMedia, pickMultipleMedia } from "$lib/platform/media-picker";
 
 const photoUri = {
 	uri: "content://photo/1",
@@ -49,9 +37,6 @@ function runningOnAndroid() {
 beforeEach(() => {
 	openMock.mockReset();
 	platformMock.mockReset();
-	readFileMock.mockReset();
-	androidFsMock.getMimeType.mockReset();
-	androidFsMock.readFile.mockReset();
 	androidFsMock.showOpenFilePicker.mockReset();
 	platformMock.mockReturnValue("macos");
 });
@@ -61,55 +46,6 @@ afterEach(() => {
 	delete tauri.isTauri;
 });
 
-describe("readMediaBytes", () => {
-	it("reads a desktop selection through the filesystem plugin", async () => {
-		const bytes = new Uint8Array([1, 2, 3]);
-		readFileMock.mockResolvedValue(bytes);
-
-		await expect(
-			readMediaBytes({
-				source: "desktop",
-				key: "desktop-1",
-				mimeType: "image/png",
-				path: "/tmp/photo.png",
-			}),
-		).resolves.toBe(bytes);
-
-		expect(readFileMock).toHaveBeenCalledWith("/tmp/photo.png");
-	});
-
-	it("reads an Android selection through the android-fs plugin", async () => {
-		const bytes = new Uint8Array([4, 5, 6]);
-		androidFsMock.readFile.mockResolvedValue(bytes);
-
-		await expect(
-			readMediaBytes({
-				source: "android",
-				key: "android-1",
-				mimeType: "image/jpeg",
-				uri: photoUri,
-			}),
-		).resolves.toBe(bytes);
-
-		expect(androidFsMock.readFile).toHaveBeenCalledWith(photoUri);
-	});
-
-	it("reads a web selection from the File itself", async () => {
-		const file = new File([new Uint8Array([7, 8, 9])], "photo.jpg", {
-			type: "image/jpeg",
-		});
-
-		await expect(
-			readMediaBytes({
-				source: "web",
-				key: "web-1",
-				mimeType: "image/jpeg",
-				file,
-			}),
-		).resolves.toEqual(new Uint8Array([7, 8, 9]));
-	});
-});
-
 describe("pickMedia", () => {
 	it("returns null when the desktop picker is cancelled", async () => {
 		openMock.mockResolvedValue(null);
@@ -117,7 +53,9 @@ describe("pickMedia", () => {
 		await expect(pickMedia("image")).resolves.toBeNull();
 
 		expect(openMock).toHaveBeenCalledWith({
-			filters: [{ name: "Images", extensions: ["jpg", "jpeg", "png"] }],
+			filters: [
+				{ name: "Images", extensions: ["jpg", "jpeg", "png", "webp"] },
+			],
 			multiple: false,
 		});
 	});
@@ -140,14 +78,14 @@ describe("pickMultipleMedia", () => {
 		vi.spyOn(crypto, "randomUUID")
 			.mockReturnValueOnce(firstKey)
 			.mockReturnValueOnce(secondKey);
-		openMock.mockResolvedValue(["/tmp/clip.webm", "/tmp/raw.unknown"]);
+		openMock.mockResolvedValue(["/tmp/clip.mov", "/tmp/raw.unknown"]);
 
 		await expect(pickMultipleMedia("media")).resolves.toEqual([
 			{
 				source: "desktop",
 				key: firstKey,
-				mimeType: "video/webm",
-				path: "/tmp/clip.webm",
+				mimeType: "video/quicktime",
+				path: "/tmp/clip.mov",
 			},
 			{
 				source: "desktop",
@@ -161,7 +99,7 @@ describe("pickMultipleMedia", () => {
 			filters: [
 				{
 					name: "Media",
-					extensions: ["jpg", "jpeg", "png", "mp4", "webm"],
+					extensions: ["jpg", "jpeg", "png", "webp", "mp4", "mov"],
 				},
 			],
 			multiple: true,
@@ -172,8 +110,10 @@ describe("pickMultipleMedia", () => {
 		["/tmp/photo.jpg", "image/jpeg"],
 		["/tmp/photo.jpeg", "image/jpeg"],
 		["/tmp/photo.PNG", "image/png"],
+		["/tmp/photo.webp", "image/webp"],
 		["/tmp/clip.mp4", "video/mp4"],
-		["/tmp/clip.webm", "video/webm"],
+		["/tmp/clip.MOV", "video/quicktime"],
+		["/tmp/clip.webm", null],
 		["/tmp/noextension", null],
 	])("resolves the MIME type of %s to %s", async (path, mimeType) => {
 		vi.spyOn(crypto, "randomUUID").mockReturnValue(firstKey);
@@ -190,12 +130,12 @@ describe("pickMultipleMedia", () => {
 		await pickMultipleMedia("video");
 
 		expect(openMock).toHaveBeenCalledWith({
-			filters: [{ name: "Videos", extensions: ["mp4", "webm"] }],
+			filters: [{ name: "Videos", extensions: ["mp4", "mov"] }],
 			multiple: true,
 		});
 	});
 
-	it("uses Android gallery MIME filters and keeps the picker's URIs", async () => {
+	it("uses Android gallery MIME filters and keeps the picker's URIs without reading them", async () => {
 		runningOnAndroid();
 		vi.spyOn(crypto, "randomUUID")
 			.mockReturnValueOnce(firstKey)
@@ -204,21 +144,13 @@ describe("pickMultipleMedia", () => {
 			photoUri,
 			videoUri,
 		]);
-		androidFsMock.getMimeType
-			.mockResolvedValueOnce("image/jpeg")
-			.mockResolvedValueOnce("video/mp4");
 
 		await expect(pickMultipleMedia("media")).resolves.toEqual([
-			{
-				source: "android",
-				key: firstKey,
-				mimeType: "image/jpeg",
-				uri: photoUri,
-			},
+			{ source: "android", key: firstKey, mimeType: null, uri: photoUri },
 			{
 				source: "android",
 				key: secondKey,
-				mimeType: "video/mp4",
+				mimeType: null,
 				uri: videoUri,
 			},
 		]);
@@ -228,8 +160,6 @@ describe("pickMultipleMedia", () => {
 			mimeTypes: ["image/*", "video/*"],
 			multiple: true,
 		});
-		expect(androidFsMock.getMimeType).toHaveBeenCalledWith(photoUri);
-		expect(androidFsMock.getMimeType).toHaveBeenCalledWith(videoUri);
 		expect(openMock).not.toHaveBeenCalled();
 	});
 

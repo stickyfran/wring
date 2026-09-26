@@ -224,9 +224,9 @@
 	});
 </script>
 
-{#snippet bubbleContent(label: string)}
+{#snippet bubbleContent()}
 	<ImagesIcon size={24} weight="fill" />
-	<span>{label}</span>
+	<span>Expiring image</span>
 	{@render media.adornments?.()}
 {/snippet}
 
@@ -243,11 +243,11 @@
 		disabled={imageState.status !== "idle"}
 		{@attach media.attach}
 	>
-		{@render bubbleContent("View expiring image")}
+		{@render bubbleContent()}
 	</button>
 {:else if isOut}
 	<div class={[bubbleClass, "text-muted-foreground"]} {@attach media.attach}>
-		{@render bubbleContent("Expiring photo")}
+		{@render bubbleContent()}
 	</div>
 {:else}
 	<div class={["h-12 w-50", className, contentClass]} {@attach media.attach}>

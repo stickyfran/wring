@@ -44,7 +44,7 @@
 		<Marker latLng={[message.lat, message.lon]} />
 	</Map>
 	<div
-		class="absolute right-2 bottom-2 z-20 flex size-8 items-center justify-center rounded-full bg-background/80 shadow-sm backdrop-blur-md"
+		class="absolute right-2 bottom-2 z-20 flex size-8 items-center justify-center rounded-full bg-background shadow-sm"
 	>
 		<MapPinIcon weight="fill" class="size-5 text-foreground" />
 	</div>

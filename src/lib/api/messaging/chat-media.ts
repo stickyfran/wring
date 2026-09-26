@@ -1,10 +1,10 @@
-import { invoke } from "@tauri-apps/api/core";
 import z from "zod";
 
+import { invokeRest } from "$lib/api/transport";
 import { demoEnabled, demoUploadChatMedia } from "$lib/demo";
 import { mediaUrlSchema } from "$lib/model/media";
-import { type PickedMedia, readMediaBytes } from "$lib/platform/media-picker";
-import { toBase64 } from "$lib/util/base64";
+import { mediaFileDescriptor } from "$lib/platform/media-file";
+import type { PickedMedia } from "$lib/platform/media-picker";
 import { type DrawerMedia, saveMediaToDrawer } from "./drawer";
 
 const mediaUploadResponseSchema = z.object({
@@ -15,28 +15,51 @@ const mediaUploadResponseSchema = z.object({
 
 export type MediaUploadResponse = z.infer<typeof mediaUploadResponseSchema>;
 
-async function uploadChatMedia(
-	bytes: Uint8Array<ArrayBuffer>,
-	options: { contentType: string; takenOnGrindr: boolean },
-): Promise<MediaUploadResponse> {
+function chatMediaUploadPath(takenOnGrindr: boolean): string {
+	return takenOnGrindr
+		? "/v6/chat/media/upload?takenOnGrindr=true"
+		: "/v5/chat/media/upload?takenOnGrindr=false";
+}
+
+async function uploadChatMedia({
+	media,
+	contentType,
+	takenOnGrindr,
+}: {
+	media: PickedMedia;
+	contentType: string;
+	takenOnGrindr: boolean;
+}): Promise<MediaUploadResponse> {
 	if (demoEnabled) {
-		return demoUploadChatMedia({ bytes, contentType: options.contentType });
+		if (media.source !== "web") {
+			throw new Error("The demo only reads files picked in the browser");
+		}
+		return demoUploadChatMedia({
+			bytes: new Uint8Array(await media.file.arrayBuffer()),
+			contentType,
+		});
 	}
-	const response = await invoke("upload_chat_media", {
-		contentType: options.contentType,
-		takenOnGrindr: options.takenOnGrindr,
-		data: toBase64(bytes),
+	if (media.source === "web") {
+		throw new Error("A file picked in the browser has no native path");
+	}
+	const path = chatMediaUploadPath(takenOnGrindr);
+	const response = await invokeRest("upload_media", {
+		args: { path, signed: takenOnGrindr, file: mediaFileDescriptor(media) },
+		requestInfo: { method: "POST", path },
 	});
-	return mediaUploadResponseSchema.parse(response);
+	return response.jsonParsed(mediaUploadResponseSchema);
 }
 
 export async function addMediaToDrawer(
 	media: PickedMedia,
 ): Promise<DrawerMedia> {
 	const takenOnGrindr = false;
-	const bytes = await readMediaBytes(media);
-	const contentType = media.mimeType ?? "image/jpeg";
-	const uploaded = await uploadChatMedia(bytes, {
+	const contentType =
+		media.source === "web"
+			? (media.mimeType ?? "image/jpeg")
+			: "image/jpeg";
+	const uploaded = await uploadChatMedia({
+		media,
 		contentType,
 		takenOnGrindr,
 	});

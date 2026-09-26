@@ -1,4 +1,5 @@
 pub mod api;
+mod app_data;
 mod app_settings;
 mod appearance;
 mod appimage;
@@ -6,11 +7,19 @@ mod context_menu;
 mod desktop_entry;
 mod error;
 mod haptics;
+mod hex;
 pub mod media;
 mod photo;
+#[cfg(test)]
+mod pin_support;
+mod plugin_rejection;
+#[cfg(any(target_os = "android", test))]
+mod push_poll;
 mod scroll_phase;
 mod state;
 mod storage;
+mod upload;
+mod video;
 
 use std::sync::OnceLock;
 
@@ -143,7 +152,9 @@ pub fn run() {
 	#[cfg(target_os = "android")]
 	let builder = builder
 		.plugin(tauri_plugin_android_fs::init())
-		.plugin(photo::plugin());
+		.plugin(photo::plugin())
+		.plugin(api::recaptcha::plugin())
+		.plugin(api::push::plugin());
 
 	builder
         .plugin(open_grind_platform_plugin())
@@ -160,52 +171,75 @@ pub fn run() {
         .manage(AppState {
             client: OnceLock::new(),
         })
+        .manage(upload::UploadLock::default())
         .manage(media::MediaProxy::default())
         .manage(api::session_recovery::SessionRecovery::default())
         .register_asynchronous_uri_scheme_protocol(media::SCHEME, media::handle)
         .invoke_handler(tauri::generate_handler![
-            api::auth::login,
-            api::auth::login_with_google,
-            api::auth::google_sign_in,
+            api::auth::sign_in_with_email,
+            api::auth::sign_in_with_google,
+            api::auth::sign_in_with_google_token,
             api::auth::backend_ready,
-            api::auth::google_handback_pending,
-            api::auth::take_google_handback,
-            api::auth::discard_google_handback,
-            api::auth::login_with_facebook,
-            api::auth::refresh_token,
-            api::auth::logout,
-            api::auth::auth_state,
+            api::auth::google_handoff_pending,
+            api::auth::sign_in_with_google_handoff,
+            api::auth::discard_google_handoff,
+            api::auth::sign_in_with_facebook,
+            api::auth::refresh_session,
+            api::auth::sign_out,
             api::auth::get_session_credentials,
             api::auth::account_restriction,
             api::auth::recaptcha_first_party_enabled,
+            api::recaptcha::mint_recaptcha_token,
+            api::push::push_addon_ready,
+            api::push::push_token,
+            api::push::push_delete_token,
+            api::push::push_notifications_enabled,
+            api::push::push_set_notifications_enabled,
+            api::push::push_open_notification_settings,
+            api::push::push_mode,
+            api::push::push_set_mode,
+            api::push::push_categories,
+            api::push::push_set_category,
+            api::push::push_open_category_settings,
+            api::push::push_notification_permission,
+            api::push::push_request_notification_permission,
+            api::push::push_take_deeplink,
+            api::push::push_watch,
             storage::storage_backend,
             api::rest::request,
-            api::media_upload::upload_chat_media,
+            upload::bytes::upload_media,
+            upload::inspect::inspect_media_file,
+            upload::file::upload_media_file,
             api::ws::ws_connect,
             api::ws::ws_reconnect,
             api::ws::ws_send,
             api::client::rotate_api_params,
             api::session_recovery::set_app_active,
-            api::session_recovery::session_health,
-            haptics::haptic_threshold_reached,
-            scroll_phase::scroll_gesture_capture,
+            api::session_recovery::current_session,
+            haptics::play_threshold_haptic,
+            scroll_phase::set_scroll_gesture_capture,
             desktop_entry::desktop_entry_state,
             desktop_entry::desktop_entry_install,
             desktop_entry::desktop_entry_remove,
-            api::update::commands::update_capability,
-            api::update::commands::update_settings,
-            api::update::commands::update_set_auto_check,
-            api::update::commands::update_check,
-            api::update::commands::update_download,
-            api::update::commands::update_cancel_download,
-            api::update::commands::update_progress,
-            api::update::commands::update_readiness,
-            api::update::commands::update_install,
-            api::update::commands::update_take_install_outcome,
-            api::update::commands::update_open_install_permission_settings,
-            api::update::commands::update_discard,
+            api::update::commands::updater_capability,
+            api::update::commands::updater_settings,
+            api::update::commands::updater_set_auto_check,
+            api::update::commands::updater_check,
+            api::update::commands::updater_download,
+            api::update::commands::updater_cancel_download,
+            api::update::commands::updater_progress,
+            api::update::commands::updater_readiness,
+            api::update::commands::updater_install,
+            api::update::commands::updater_install_pending,
+            api::update::commands::updater_installed_version,
+            api::update::commands::updater_take_install_outcome,
+            api::update::commands::updater_open_install_permission_settings,
+            api::update::commands::updater_discard,
             app_settings::open_app_settings,
             appearance::backdrop_filter_renders,
+            app_data::read_app_data,
+            app_data::write_app_data,
+            app_data::remove_app_data,
         ])
         .setup(|app| {
             scroll_phase::install_scroll_gesture_bridge(app.handle());
@@ -265,8 +299,10 @@ pub fn run() {
                 credentials,
                 token: None,
             });
-            let client = grindr::GrindrClient::new(device, resumed)
-                .expect("failed to build GrindrClient");
+            let client = state::share(|| {
+                grindr::GrindrClient::new(device, resumed)
+                    .expect("failed to build GrindrClient")
+            });
 
             {
                 let mut session_rx = client.session_receiver();
@@ -434,5 +470,40 @@ mod webview_floor_pins {
 				.take(2)
 				.collect();
 		assert_eq!(rust, page);
+	}
+}
+
+#[cfg(test)]
+mod frontend_method_pins {
+	const THIS: &str = include_str!("lib.rs");
+	const METHODS: &str = include_str!("../../src/lib/api/methods.ts");
+
+	fn between<'a>(haystack: &'a str, open: &str, close: &str) -> &'a str {
+		let start = haystack.find(open).expect(open) + open.len();
+		let len = haystack[start..].find(close).expect(close);
+		&haystack[start..start + len]
+	}
+
+	#[test]
+	fn every_frontend_method_is_a_registered_command() {
+		let registered: Vec<&str> =
+			between(THIS, "tauri::generate_handler![", "])")
+				.split(',')
+				.filter_map(|entry| entry.trim().rsplit("::").next())
+				.collect();
+		let methods: Vec<&str> =
+			between(METHODS, "export const methods = {", "\n}")
+				.lines()
+				.filter_map(|line| line.strip_prefix('\t'))
+				.filter(|line| !line.starts_with(['\t', '}']))
+				.map(|line| line.split_once(':').expect(line).0)
+				.collect();
+		assert!(!methods.is_empty());
+		for method in methods {
+			assert!(
+				registered.contains(&method),
+				"{method} is called by the frontend but not registered"
+			);
+		}
 	}
 }

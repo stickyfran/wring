@@ -11,8 +11,9 @@
 		desktopEntryInstalled,
 		setDesktopEntryInstalled,
 	} from "$lib/platform/desktop-entry.svelte";
-	import { setAutomaticUpdateChecks } from "$lib/updates";
 	import { updatesSelfManaged } from "$lib/updates/capability.svelte";
+	import { saveAutomaticChecks } from "$lib/updates/update-settings.svelte";
+	import { bottomChrome } from "$lib/util/screen-chrome.svelte";
 	import icon from "../../../contrib/logo/open-grind.svg";
 
 	let checkAutomatically = $state(true);
@@ -26,7 +27,7 @@
 		starting = true;
 		try {
 			if (updatesSelfManaged()) {
-				await setAutomaticUpdateChecks(checkAutomatically);
+				await saveAutomaticChecks(checkAutomatically);
 			}
 			if (addToAppsMenu && offerAppsMenu()) {
 				await setDesktopEntryInstalled(true).catch((error: unknown) =>
@@ -70,6 +71,7 @@
 
 	<div
 		class="sticky bottom-0 flex shrink-0 flex-col items-center gap-2 bg-background pt-2 pb-[calc(2rem+var(--safe-area-bottom))]"
+		{@attach bottomChrome}
 	>
 		{#if updatesSelfManaged()}
 			<Label class="flex items-center rounded-xl p-2 pb-3">

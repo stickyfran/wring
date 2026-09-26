@@ -57,7 +57,9 @@ test("replying quotes the message it answers", async ({ page }) => {
 	await page.getByRole("textbox").fill("quoting you");
 	await page.getByRole("textbox").press("Enter");
 
-	await expect(page.getByText("quoting you")).toBeVisible();
+	await expect(
+		page.getByText("quoting you").filter({ visible: true }),
+	).toBeVisible();
 	await expect(page.locator(QUOTE)).toHaveCount(quotesBefore + 1);
 	await expect(replyBar).toBeHidden();
 });
@@ -74,7 +76,9 @@ test("cancelling a reply leaves the message unquoted", async ({ page }) => {
 	await page.getByRole("textbox").fill("just a message");
 	await page.getByRole("textbox").press("Enter");
 
-	await expect(page.getByText("just a message")).toBeVisible();
+	await expect(
+		page.getByText("just a message").filter({ visible: true }),
+	).toBeVisible();
 	await expect(page.locator(QUOTE)).toHaveCount(quotesBefore);
 });
 
@@ -186,7 +190,7 @@ test("a touch drag taps the actuator as it passes the trigger, once", async ({
 	page,
 }) => {
 	await openConversation(page, { platform: "android" });
-	const taps = await captureInvokes(page, "haptic_threshold_reached");
+	const taps = await captureInvokes(page, "play_threshold_haptic");
 
 	await swipeIncoming(page, 140);
 
@@ -198,7 +202,7 @@ test("a touch drag that stops short of the trigger taps nothing", async ({
 	page,
 }) => {
 	await openConversation(page, { platform: "android" });
-	const taps = await captureInvokes(page, "haptic_threshold_reached");
+	const taps = await captureInvokes(page, "play_threshold_haptic");
 
 	await swipeIncoming(page, 40);
 
@@ -236,7 +240,7 @@ test("an unsent message offers no reply", async ({ page }) => {
 	await expect(unsent).toHaveCount(1);
 	await unsent.click({ button: "right" });
 
-	await expect(page.getByRole("button", { name: "Report" })).toBeVisible();
+	await expect(page.getByRole("button", { name: "Report" })).toHaveCount(0);
 	await expect(page.getByRole("button", { name: "Reply" })).toHaveCount(0);
 	await expect(
 		page.getByRole("button", { name: "React with fire" }),

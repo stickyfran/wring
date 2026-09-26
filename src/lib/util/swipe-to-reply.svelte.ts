@@ -1,8 +1,8 @@
-import { Spring } from "svelte/motion";
+import { prefersReducedMotion, Spring } from "svelte/motion";
 import type { Attachment } from "svelte/attachments";
 import type { HTMLAttributes } from "svelte/elements";
 
-import { hapticThresholdReached } from "$lib/haptics";
+import { playThresholdHaptic } from "$lib/haptics";
 import { isMacosPlatform } from "$lib/platform/os";
 import {
 	scrollGesture,
@@ -58,6 +58,7 @@ export class SwipeToReply {
 	readonly #onReply: () => void;
 	readonly #onArm: () => void;
 	readonly #now: () => number;
+	readonly #reducedMotion: () => boolean;
 	#pointerId: number | null = null;
 	#startClientX = 0;
 	#startClientY = 0;
@@ -85,12 +86,13 @@ export class SwipeToReply {
 	constructor({
 		direction,
 		onReply,
-		onArm = hapticThresholdReached,
+		onArm = playThresholdHaptic,
 		now = () => performance.now(),
 		scrollEndSupported = typeof window !== "undefined" &&
 			"onscrollend" in window,
 		wheelMode = wheelInputMode(),
 		gesture = scrollGesture,
+		reducedMotion = () => prefersReducedMotion.current,
 	}: {
 		direction: "left" | "right";
 		onReply: () => void;
@@ -99,6 +101,7 @@ export class SwipeToReply {
 		scrollEndSupported?: boolean;
 		wheelMode?: WheelInputMode;
 		gesture?: ScrollGestureState;
+		reducedMotion?: () => boolean;
 	}) {
 		this.#dragSign = direction === "right" ? 1 : -1;
 		this.#onReply = onReply;
@@ -107,6 +110,7 @@ export class SwipeToReply {
 		this.#railHasScrollEnd = scrollEndSupported;
 		this.#wheelMode = wheelMode;
 		this.#gesture = gesture;
+		this.#reducedMotion = reducedMotion;
 	}
 
 	#setArmed(drag: number): void {
@@ -220,9 +224,16 @@ export class SwipeToReply {
 		if (commit) this.#onReply();
 	}
 
+	#returnOffset(): void {
+		void this.#offset.set(0, { instant: this.#reducedMotion() });
+	}
+
 	#returnRail(): void {
 		this.#railReturning = true;
-		this.#rail?.scrollTo({ left: this.#railRest, behavior: "smooth" });
+		this.#rail?.scrollTo({
+			left: this.#railRest,
+			behavior: this.#reducedMotion() ? "instant" : "smooth",
+		});
 	}
 
 	#attachBridge(node: HTMLElement): () => void {
@@ -295,7 +306,7 @@ export class SwipeToReply {
 		this.#bridgeDrag = 0;
 		this.#disarm();
 		this.#gesture.capture(false);
-		void this.#offset.set(0);
+		this.#returnOffset();
 	}
 
 	#onDown(event: PointerEvent): void {
@@ -355,7 +366,7 @@ export class SwipeToReply {
 		this.#pointerId = null;
 		this.#axis = "undecided";
 		this.#disarm();
-		void this.#offset.set(0);
+		this.#returnOffset();
 	}
 
 	get deltaX(): number {

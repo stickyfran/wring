@@ -4,11 +4,12 @@
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 	<uses-permission android:name="android.permission.VIBRATE" />
 
-	<uses-permission android:name="org.opengrind.google_oauth.permission.REQUEST_TOKEN" />
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-	<permission
-		android:name="org.opengrind.permission.RECEIVE_GOOGLE_TOKEN"
-		android:protectionLevel="signature" />
+	<uses-permission android:name="org.opengrind.google_oauth.permission.REQUEST_TOKEN" />
+	<uses-permission android:name="org.opengrind.recaptcha.permission.MINT_TOKEN" />
 
 	<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -19,6 +20,8 @@
 
 	<queries>
 		<package android:name="org.opengrind.google_oauth" />
+		<package android:name="org.opengrind.recaptcha" />
+		<package android:name="org.opengrind.fcm" />
 	</queries>
 
 	<!-- AndroidTV support -->
@@ -27,6 +30,7 @@
 	<application
 		android:allowBackup="false"
 		android:dataExtractionRules="@xml/data_extraction_rules"
+		android:enableOnBackInvokedCallback="true"
 		android:icon="@mipmap/ic_launcher"
 		android:label="@string/app_name"
 		android:theme="@style/Theme.open_grind"
@@ -55,7 +59,6 @@
 		<activity
 			android:name=".TokenHandoffActivity"
 			android:exported="true"
-			android:permission="org.opengrind.permission.RECEIVE_GOOGLE_TOKEN"
 			android:excludeFromRecents="true"
 			android:persistableMode="persistNever"
 			android:taskAffinity=""
@@ -77,6 +80,20 @@
 			<intent-filter>
 				<action android:name="android.intent.action.BOOT_COMPLETED" />
 				<action android:name="android.intent.action.QUICKBOOT_POWERON" />
+			</intent-filter>
+		</receiver>
+
+		<service
+			android:name="org.opengrind.push.PushPollService"
+			android:exported="false"
+			android:permission="android.permission.BIND_JOB_SERVICE" />
+
+		<receiver
+			android:name="org.opengrind.push.PushReceiver"
+			android:exported="true">
+			<intent-filter>
+				<action android:name="org.opengrind.fcm.action.MESSAGE" />
+				<action android:name="org.opengrind.fcm.action.NEW_TOKEN" />
 			</intent-filter>
 		</receiver>
 

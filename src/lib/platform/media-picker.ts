@@ -1,5 +1,4 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { readFile } from "@tauri-apps/plugin-fs";
 import { AndroidFs, type AndroidFsUri } from "tauri-plugin-android-fs-api";
 
 import { demoEnabled } from "$lib/demo";
@@ -10,14 +9,15 @@ type MediaFilter = { name: string; extensions: string[]; mimeTypes: string[] };
 const mimeTypesByExtension: Record<string, string> = {
 	jpeg: "image/jpeg",
 	jpg: "image/jpeg",
+	mov: "video/quicktime",
 	mp4: "video/mp4",
 	png: "image/png",
-	webm: "video/webm",
+	webp: "image/webp",
 };
 
-const imageExtensions = ["jpg", "jpeg", "png"];
+const imageExtensions = ["jpg", "jpeg", "png", "webp"];
 
-const videoExtensions = ["mp4", "webm"];
+const videoExtensions = ["mp4", "mov"];
 
 const filtersByKind = {
 	image: {
@@ -54,19 +54,6 @@ export function pickMultipleMedia(kind: MediaKind): Promise<PickedMedia[]> {
 	return pick({ kind, multiple: true });
 }
 
-export async function readMediaBytes(
-	media: PickedMedia,
-): Promise<Uint8Array<ArrayBuffer>> {
-	switch (media.source) {
-		case "android":
-			return AndroidFs.readFile(media.uri);
-		case "desktop":
-			return readFile(media.path);
-		case "web":
-			return new Uint8Array(await media.file.arrayBuffer());
-	}
-}
-
 async function pick({
 	kind,
 	multiple,
@@ -78,12 +65,14 @@ async function pick({
 
 	if (demoEnabled) {
 		const files = await pickWebFiles({ filter, multiple });
-		return files.map((file): PickedMedia => ({
-			source: "web",
-			key: crypto.randomUUID(),
-			mimeType: file.type === "" ? null : file.type,
-			file,
-		}));
+		return files.map(
+			(file): PickedMedia => ({
+				source: "web",
+				key: crypto.randomUUID(),
+				mimeType: file.type === "" ? null : file.type,
+				file,
+			}),
+		);
 	}
 
 	if (isAndroidPlatform()) {
@@ -92,13 +81,13 @@ async function pick({
 			mimeTypes: filter.mimeTypes,
 			multiple,
 		});
-		return Promise.all(
-			uris.map(async (uri): Promise<PickedMedia> => ({
+		return uris.map(
+			(uri): PickedMedia => ({
 				source: "android",
 				key: crypto.randomUUID(),
-				mimeType: await AndroidFs.getMimeType(uri),
+				mimeType: null,
 				uri,
-			})),
+			}),
 		);
 	}
 
@@ -112,12 +101,14 @@ async function pick({
 			: Array.isArray(selection)
 				? selection
 				: [selection];
-	return paths.map((path): PickedMedia => ({
-		source: "desktop",
-		key: crypto.randomUUID(),
-		mimeType: mimeTypeFromPath(path),
-		path,
-	}));
+	return paths.map(
+		(path): PickedMedia => ({
+			source: "desktop",
+			key: crypto.randomUUID(),
+			mimeType: mimeTypeFromPath(path),
+			path,
+		}),
+	);
 }
 
 function mimeTypeFromPath(path: string): string | null {

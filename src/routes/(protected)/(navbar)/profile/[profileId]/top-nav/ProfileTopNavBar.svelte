@@ -46,6 +46,12 @@
 		>
 			<DownloadSimpleIcon class="size-7" />
 		</Button>
-		<ProfileActionsMenu {profileId} {profile} {onBlocked} {onHidden} />
+		<ProfileActionsMenu
+			{profileId}
+			{profile}
+			blockable={profile.isBlockable !== false}
+			{onBlocked}
+			{onHidden}
+		/>
 	{/if}
 </nav>
