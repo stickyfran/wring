@@ -9,6 +9,7 @@ import {
 	type AlbumContentResponse,
 	getAlbumContent,
 } from "$lib/api/messaging/albums";
+import { mediaFailure, remedyFor } from "$lib/platform/media-failure";
 import { now } from "$lib/util/clock";
 import { proxyMediaUrl } from "$lib/util/media";
 import {
@@ -17,12 +18,9 @@ import {
 	type MediaDimensions,
 } from "$lib/util/media-dimensions";
 import {
-	applyPhotoSwipeBackGesture,
 	applyPhotoSwipeComponent,
 	applyPhotoSwipeDownloadButton,
-	applyPhotoSwipeErrorUi,
-	applyPhotoSwipeVideo,
-	applyPhotoSwipeViewportSync,
+	openLightbox,
 } from "$lib/util/photoswipe";
 import { hasNoPlaysLeft, isVideoContent } from "./album";
 import NoPlaysLeftSlide from "./NoPlaysLeftSlide.svelte";
@@ -30,8 +28,9 @@ import NoPlaysLeftSlide from "./NoPlaysLeftSlide.svelte";
 export type AlbumSlide = AlbumContentResponse["content"][number] &
 	MediaDimensions;
 
-const SLIDES_TTL_MS = 10 * 60 * 1000;
+const SLIDES_TTL_MS = 5 * 60 * 1000;
 const UNMEASURED: MediaDimensions = { width: 1080, height: 1080 };
+const SIZED_ON_LOAD: MediaDimensions = { width: 0, height: 0 };
 const ALBUM_CACHE_KEY = "open_cached_albums_v1";
 
 function loadAlbumsCache(): Map<number, AlbumSlide[]> {
@@ -104,6 +103,7 @@ export async function loadAlbumSlides(albumId: number): Promise<AlbumSlide[]> {
 	}
 	const epoch = accountEpoch();
 	const forgetCount = forgetCountOf(albumId);
+	const requestedAt = now();
 	try {
 		const album = await getAlbumContent(albumId);
 		const ready = album.content.filter((item) => !item.processing);
@@ -115,19 +115,21 @@ export async function loadAlbumSlides(albumId: number): Promise<AlbumSlide[]> {
 				const coverUrl = hasNoPlaysLeft(slide)
 					? (cover ?? proxyMediaUrl(slide.thumbUrl))
 					: cover;
-				const measurable = { video: coverUrl, image: url }[kind];
-				const size = await (
-					measurable === null
-						? measureVideo(url)
-						: measureImage(measurable)
-				).catch(() => UNMEASURED);
+				const size =
+					kind === "image"
+						? SIZED_ON_LOAD
+						: await (
+								coverUrl === null
+									? measureVideo(url)
+									: measureImage(coverUrl)
+							).catch(() => UNMEASURED);
 				return { ...slide, url, coverUrl, ...size };
 			}),
 		);
 		const forgottenMeanwhile =
 			!isAccountEpochCurrent(epoch) || forgetCountOf(albumId) !== forgetCount;
 		if (!forgottenMeanwhile && ready.length === album.content.length) {
-			slidesByAlbum.set(albumId, { slides, at: now() });
+			slidesByAlbum.set(albumId, { slides, at: requestedAt });
 			persistentAlbumCache.set(albumId, slides);
 			saveAlbumsCache(persistentAlbumCache);
 		}
@@ -141,31 +143,66 @@ export async function loadAlbumSlides(albumId: number): Promise<AlbumSlide[]> {
 	}
 }
 
-export async function openAlbumLightbox({
+type LightboxItem = { src: string; width: number; height: number };
+
+export function albumPhotoRenewal({
+	albumId,
+	slides,
+	items,
+}: {
+	albumId: number;
+	slides: AlbumSlide[];
+	items: LightboxItem[];
+}) {
+	const renewed = new Set<number>();
+	let fresh: Promise<AlbumSlide[]> | null = null;
+
+	return async function renew({
+		index,
+		refresh,
+	}: {
+		index: number;
+		refresh: () => void;
+	}): Promise<void> {
+		const slide = slides[index];
+		const item = items[index];
+		if (slide === undefined || item === undefined) return;
+		if (isVideoContent(slide.contentType) || renewed.has(slide.contentId))
+			return;
+		if (remedyFor(await mediaFailure(item.src)) !== "renew") return;
+		renewed.add(slide.contentId);
+		fresh ??= (async () => {
+			forgetAlbumSlides(albumId);
+			return await loadAlbumSlides(albumId);
+		})().finally(() => (fresh = null));
+		for (const renewedSlide of await fresh) {
+			slides.forEach((old, position) => {
+				const target = items[position];
+				if (old.contentId !== renewedSlide.contentId || !target) return;
+				if (isVideoContent(old.contentType)) return;
+				target.src = renewedSlide.url;
+			});
+		}
+		refresh();
+	};
+}
+
+export function openAlbumLightbox({
+	albumId,
 	slides,
 	signal,
 	onClosed,
 }: {
+	albumId: number;
 	slides: AlbumSlide[];
 	signal: AbortSignal;
 	onClosed: () => void;
 }): Promise<void> {
-	const { default: PhotoSwipeLightbox } = await import("photoswipe/lightbox");
-	if (signal.aborted) return;
-	const lightbox = new PhotoSwipeLightbox({
-		showHideAnimationType: "fade",
-		pswpModule: () => import("photoswipe"),
-		mainClass: "pswp--buttons-visible",
-	});
-	applyPhotoSwipeErrorUi(lightbox);
-	applyPhotoSwipeViewportSync(lightbox);
-	lightbox.addFilter("numItems", () => slides.length);
-	lightbox.addFilter("itemData", (itemData, index) => {
-		const slide = slides[index];
-		if (slide === undefined) return itemData;
-		return { src: slide.url, width: slide.width, height: slide.height };
-	});
-	applyPhotoSwipeBackGesture(lightbox);
+	const items = slides.map(({ url, width, height }) => ({
+		src: url,
+		width,
+		height,
+	}));
 	const videoAt = (index: number) => {
 		const slide = slides[index];
 		if (
@@ -176,24 +213,37 @@ export async function openAlbumLightbox({
 			return null;
 		return { src: slide.url, poster: slide.coverUrl };
 	};
-	applyPhotoSwipeVideo(lightbox, videoAt);
-	applyPhotoSwipeDownloadButton(lightbox, videoAt);
-	applyPhotoSwipeComponent(lightbox, {
-		slideAt: (index) => {
-			const slide = slides[index];
-			return slide !== undefined && hasNoPlaysLeft(slide) ? slide : null;
-		},
-		render: ({ target, slide, content }) => {
-			const locked = mount(NoPlaysLeftSlide, {
-				target,
-				props: { still: slide.coverUrl },
+	const renew = albumPhotoRenewal({ albumId, slides, items });
+	return openLightbox({
+		items,
+		videoAt,
+		configure: (lightbox) => {
+			applyPhotoSwipeDownloadButton(lightbox, videoAt);
+			lightbox.on("loadError", ({ content }) => {
+				void renew({
+					index: content.index,
+					refresh: () =>
+						lightbox.pswp?.refreshSlideContent(content.index),
+				});
 			});
-			content.onLoaded();
-			return locked;
+			applyPhotoSwipeComponent(lightbox, {
+				slideAt: (index) => {
+					const slide = slides[index];
+					return slide !== undefined && hasNoPlaysLeft(slide)
+						? slide
+						: null;
+				},
+				render: ({ target, slide, content }) => {
+					const locked = mount(NoPlaysLeftSlide, {
+						target,
+						props: { still: slide.coverUrl },
+					});
+					content.onLoaded();
+					return locked;
+				},
+			});
 		},
+		signal,
+		onClosed,
 	});
-	lightbox.on("closingAnimationEnd", onClosed);
-	signal.addEventListener("abort", () => lightbox.destroy(), { once: true });
-	lightbox.init();
-	lightbox.loadAndOpen(0);
 }

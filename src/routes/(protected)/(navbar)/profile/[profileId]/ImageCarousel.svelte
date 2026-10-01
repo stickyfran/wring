@@ -1,10 +1,10 @@
 <script lang="ts">
 	import "photoswipe/style.css";
 	import { format } from "date-fns";
-	import { UserIcon } from "phosphor-svelte";
 	import z from "zod";
 	import type PhotoSwipeLightbox from "photoswipe/lightbox";
 
+	import UserSilhouette from "$lib/components/profile/UserSilhouette.svelte";
 	import { profileMediaUrl } from "$lib/util/media";
 	import {
 		applyPhotoSwipeBackGesture,
@@ -189,9 +189,7 @@
 		</div>
 	{:else}
 		<div class="absolute size-full bg-neutral-700">
-			<UserIcon
-				weight="fill"
-				color="var(--color-stone-400)"
+			<UserSilhouette
 				class="absolute top-1/2 left-1/2 size-3/4 -translate-1/2"
 			/>
 		</div>
@@ -208,7 +206,10 @@
 			display: none;
 		}
 		.pswp--profile-carousel .pswp__button--close {
-			@apply mr-3 size-11 self-center rounded-full bg-black/55 opacity-100 backdrop-filter-(--bd-veil) focus:bg-black/55 active:bg-black/55 can-hover:hover:bg-black/75;
+			@apply mr-3 size-11 self-center rounded-full bg-black/55 opacity-100 backdrop-filter-(--bd-veil) focus:bg-black/55 active:bg-black/55;
+			@variant hover {
+				@apply bg-black/75;
+			}
 		}
 		.pswp--profile-carousel .pswp__button--close .pswp__icn {
 			@apply inset-0 m-auto;

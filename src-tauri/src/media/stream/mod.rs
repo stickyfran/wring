@@ -23,15 +23,24 @@ use tokio::sync::{mpsc, oneshot, OwnedSemaphorePermit};
 use super::cache::{cache_key, CachedMedia};
 use super::registry::register_stream;
 use super::requested::Requested;
-use super::upstream::refusal_detail;
-use super::MediaProxy;
+use super::upstream::{refusal_detail, GatewayFailure};
+use super::{
+	MediaProxy, ANDROID_ANSWER_DEADLINE, RETRIED_HEADERS_DEADLINE,
+	STREAMING_PLATFORM,
+};
 use adapter::{WebViewStream, CHANNEL_SLOTS};
-use answer::{answer, Answer, Head};
-use open::open;
-use pump::{run, tee_capacity, Chunks, Outcome, Pump, Source, IDLE};
+pub use answer::{answer, Answer, Head};
+pub use fault::Fault;
+pub use open::open;
+use pump::{run, tee_capacity, Outcome, Pump, IDLE};
+pub use pump::{Chunks, Source};
 use reply::{deny, poison, refuse, streamed, unreachable, Streamed};
 
-const HEAD_DEADLINE: Duration = Duration::from_secs(25);
+const HEAD_DEADLINE: Duration = if STREAMING_PLATFORM {
+	ANDROID_ANSWER_DEADLINE
+} else {
+	RETRIED_HEADERS_DEADLINE
+};
 
 struct Opening {
 	key: String,
@@ -74,12 +83,14 @@ pub async fn serve_streamed<R: Runtime>(
 		}
 		Ok(Err(error)) => match refusal_detail(error) {
 			Err(status) => deny(status, at),
-			Ok(detail) => unreachable(url, &requested, detail),
+			Ok(failure) => unreachable(url, &requested, failure),
 		},
 		Err(_) => unreachable(
 			url,
 			&requested,
-			format!("no headers within {HEAD_DEADLINE:?}"),
+			GatewayFailure::timed_out(format!(
+				"no headers within {HEAD_DEADLINE:?}"
+			)),
 		),
 	}
 }
@@ -119,6 +130,8 @@ async fn respond<R: Runtime>(
 				status,
 				content_type: opening.content_type,
 				content_range,
+				length: (placement.length > 0)
+					.then(|| placement.length - requested.start()),
 			})
 		}
 		Answer::Refuse { status, at } => refuse(status, at),

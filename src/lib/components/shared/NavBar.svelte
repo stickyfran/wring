@@ -6,7 +6,6 @@
 	import DotsNineIcon from "phosphor-svelte/lib/DotsNineIcon";
 	import FireIcon from "phosphor-svelte/lib/FireIcon";
 	import PushPinIcon from "phosphor-svelte/lib/PushPinIcon";
-	import StarIcon from "phosphor-svelte/lib/StarIcon";
 	import { untrack } from "svelte";
 
 	import { getProfile, getProfileSync } from "$lib/api/users/profiles";
@@ -44,7 +43,6 @@
 	);
 	const hasUnreadInbox = $derived(conversations.hasUnreadInbox);
 	const hasUnreadAll = $derived(conversations.hasUnreadAll);
-	const hasUnreadFavorites = $derived(conversations.hasUnreadFavorites);
 	const hasUnreadPinned = $derived(conversations.hasUnreadPinned);
 
 	const taps = untrack(() => getTapsState(ourProfileId));
@@ -84,9 +82,11 @@
 <ProgressiveBlur
 	direction="bottomToTop"
 	tag="nav"
+	aria-label="Main"
 	class="fixed bottom-0 z-50 w-full pt-2 pb-fixed-nav"
 	bgClass="bg-linear-to-t from-background to-transparent"
-	contentClass="overflow-auto no-scrollbar left-1/2 -translate-x-1/2 m-auto flex justify-center gap-2 px-1"
+	contentClass="flex gap-2 overflow-auto no-scrollbar px-1 *:first:ms-auto *:last:me-auto"
+	contentScrollIntent="x"
 	{@attach bottomChrome}
 >
 	<div
@@ -141,18 +141,6 @@
 			<ChatDotsIcon weight="fill" />
 			Unread
 			{#if hasUnreadAll}
-				<Badge
-					class="absolute inset-e-2 top-1 size-2.5 rounded-full p-0"
-				/>
-			{/if}
-		</a>
-		<a
-			href="/chat?tab=favorites"
-			data-active={isChatRoute && currentChatTab === "favorites"}
-		>
-			<StarIcon weight="fill" />
-			Fav
-			{#if hasUnreadFavorites}
 				<Badge
 					class="absolute inset-e-2 top-1 size-2.5 rounded-full p-0"
 				/>

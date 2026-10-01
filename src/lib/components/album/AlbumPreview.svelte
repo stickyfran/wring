@@ -8,6 +8,7 @@
 	import { showErrorToast } from "$lib/api/error-toast";
 	import MediaImage from "$lib/components/shared/MediaImage.svelte";
 	import { proxyMediaUrl } from "$lib/util/media";
+	import { stableSignedUrl } from "$lib/util/signed-url";
 	import {
 		type AlbumSlide,
 		loadAlbumSlides,
@@ -23,6 +24,7 @@
 		class: className,
 		contentClass,
 		attach = () => {},
+		onexpired,
 		children,
 	}: {
 		albumId: number;
@@ -33,6 +35,7 @@
 		class?: ClassValue;
 		contentClass?: ClassValue;
 		attach?: Attachment<HTMLElement>;
+		onexpired?: () => Promise<void>;
 		children?: Snippet;
 	} = $props();
 
@@ -41,19 +44,24 @@
 		| { status: "loading" }
 		| { status: "open"; slides: AlbumSlide[] };
 
-	let state = $state<PreviewState>({ status: "idle" });
+	let preview = $state<PreviewState>({ status: "idle" });
+
+	let loadedCoverUrl = $state<string | null>(null);
+	const shownCoverUrl = $derived(
+		stableSignedUrl({ latest: coverUrl, loaded: loadedCoverUrl }),
+	);
 
 	function open() {
-		state = { status: "loading" };
+		preview = { status: "loading" };
 	}
 
 	$effect(() => {
-		if (state.status !== "loading") return;
+		if (preview.status !== "loading") return;
 		const controller = new AbortController();
 		loadAlbumSlides(albumId)
 			.then((slides) => {
 				if (controller.signal.aborted) return;
-				state =
+				preview =
 					slides.length === 0
 						? { status: "idle" }
 						: { status: "open", slides };
@@ -65,24 +73,25 @@
 					label: "Failed to load album content",
 					error,
 				});
-				state = { status: "idle" };
+				preview = { status: "idle" };
 			});
 		return () => controller.abort();
 	});
 
 	$effect(() => {
-		if (state.status !== "open") return;
-		const { slides } = state;
+		if (preview.status !== "open") return;
+		const { slides } = preview;
 		const controller = new AbortController();
 		openAlbumLightbox({
+			albumId,
 			slides,
 			signal: controller.signal,
-			onClosed: () => (state = { status: "idle" }),
+			onClosed: () => (preview = { status: "idle" }),
 		}).catch((error: unknown) => {
 			if (controller.signal.aborted) return;
 			console.error(error);
 			showErrorToast({ label: "Failed to open album", error });
-			state = { status: "idle" };
+			preview = { status: "idle" };
 		});
 		return () => controller.abort();
 	});
@@ -95,17 +104,19 @@
 		className,
 		contentClass,
 		{
-			"cursor-pointer": state.status === "idle",
-			"opacity-50": state.status === "loading",
+			"cursor-pointer": preview.status === "idle",
+			"opacity-50": preview.status === "loading",
 		},
 	]}
 	aria-label={label}
 	onclick={open}
-	disabled={state.status !== "idle"}
+	disabled={preview.status !== "idle"}
 	{@attach attach}
 >
 	<MediaImage
-		src={proxyMediaUrl(coverUrl)}
+		src={proxyMediaUrl(shownCoverUrl)}
+		onload={() => (loadedCoverUrl = shownCoverUrl)}
+		{onexpired}
 		class="absolute top-0 left-0 h-full w-full rounded-[inherit]"
 		imgClass="bg-card-foreground/10"
 	/>

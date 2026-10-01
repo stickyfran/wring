@@ -68,3 +68,17 @@ export function extractOriginalMediaUrl(proxiedUrl: string): string {
 	}
 	return proxiedUrl;
 }
+
+export function retryMediaSrc({
+	src,
+	attempt,
+}: {
+	src: string;
+	attempt: number;
+}): string {
+	return `${src}${src.includes("?") ? "&" : "?"}retry=${attempt}`;
+}
+
+export function firstFrameSrc(src: string): string {
+	return `${src}#t=0.001`;
+}

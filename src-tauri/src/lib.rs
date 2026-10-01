@@ -9,6 +9,7 @@ mod error;
 mod haptics;
 mod hex;
 pub mod media;
+mod media_picker;
 mod photo;
 #[cfg(test)]
 mod pin_support;
@@ -126,6 +127,9 @@ fn quit_when_closed(window: &tauri::WebviewWindow) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+	#[cfg(target_os = "linux")]
+	appearance::apply_environment_defaults();
+
 	api::update::enforce_home();
 
 	#[cfg(feature = "devtools")]
@@ -168,6 +172,7 @@ pub fn run() {
         .plugin(api::facebook_oauth::plugin())
         .plugin(api::update::plugin())
         .plugin(app_settings::plugin())
+        .plugin(media_picker::plugin())
         .manage(AppState {
             client: OnceLock::new(),
         })
@@ -195,6 +200,7 @@ pub fn run() {
             api::push::push_delete_token,
             api::push::push_notifications_enabled,
             api::push::push_set_notifications_enabled,
+            api::push::push_dismiss_conversation,
             api::push::push_open_notification_settings,
             api::push::push_mode,
             api::push::push_set_mode,
@@ -207,6 +213,7 @@ pub fn run() {
             api::push::push_watch,
             storage::storage_backend,
             api::rest::request,
+            media::media_failure,
             upload::bytes::upload_media,
             upload::inspect::inspect_media_file,
             upload::file::upload_media_file,
@@ -216,7 +223,7 @@ pub fn run() {
             api::client::rotate_api_params,
             api::session_recovery::set_app_active,
             api::session_recovery::current_session,
-            haptics::play_threshold_haptic,
+            haptics::play_haptic,
             scroll_phase::set_scroll_gesture_capture,
             desktop_entry::desktop_entry_state,
             desktop_entry::desktop_entry_install,
@@ -236,6 +243,7 @@ pub fn run() {
             api::update::commands::updater_open_install_permission_settings,
             api::update::commands::updater_discard,
             app_settings::open_app_settings,
+            media_picker::pick_android_media,
             appearance::backdrop_filter_renders,
             app_data::read_app_data,
             app_data::write_app_data,
@@ -256,11 +264,17 @@ pub fn run() {
                 .cloned()
                 .collect();
             for window in deferred {
-                let window =
+                let builder =
                     tauri::WebviewWindowBuilder::from_config(app.handle(), &window)?
                         .user_agent(&user_agent)
-                        .on_navigation(is_app_url)
-                        .build()?;
+                        .on_navigation(is_app_url);
+                #[cfg(target_os = "linux")]
+                let builder = builder.extensions_path(
+                    app.path().resource_dir()?.join(media::WEBKIT_EXTENSIONS),
+                );
+                let window = builder.build()?;
+                #[cfg(target_os = "linux")]
+                media::serve_element_opens(&window);
                 appearance::unlock_visual_effects(&window);
                 context_menu::trim_native_menu(&window);
                 #[cfg(desktop)]

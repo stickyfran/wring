@@ -3,7 +3,8 @@
 @import "shadcn-svelte/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
-@custom-variant can-hover (@media (hover: hover) and (pointer: fine));
+@custom-variant hover (&:hover:where([data-hover-pointer] *));
+@custom-variant can-hover (&:where([data-hover-pointer] *));
 
 :root {
 	--radius: 1rem;
@@ -40,6 +41,8 @@
 	--sidebar-ring: oklch(0.72 0.18 50);
 	--message-bubble-in: oklch(0.72 0.17 145);
 	--message-bubble-out: oklch(0.72 0.18 50);
+	--stack-scrim: 0.8;
+	--stack-edge: -1px 0 0 oklch(1 0 0 / 10%);
 	--list-rail: 117px;
 	--safe-area-top: 0px;
 	--safe-area-bottom: 0px;

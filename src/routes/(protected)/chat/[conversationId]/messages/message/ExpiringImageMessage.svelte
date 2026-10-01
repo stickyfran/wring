@@ -49,7 +49,6 @@
 <script lang="ts">
 	import "photoswipe/style.css";
 	import { ImagesIcon } from "phosphor-svelte";
-	import type PhotoSwipeLightbox from "photoswipe/lightbox";
 
 	import { showErrorToast } from "$lib/api/error-toast";
 	import { getSingleMessage } from "$lib/api/messaging/messages";
@@ -63,10 +62,8 @@
 		type MediaDimensions,
 	} from "$lib/util/media-dimensions";
 	import {
-		applyPhotoSwipeBackGesture,
 		applyPhotoSwipeDownloadButton,
-		applyPhotoSwipeErrorUi,
-		applyPhotoSwipeViewportSync,
+		openLightbox,
 	} from "$lib/util/photoswipe";
 	import LockedMedia from "./LockedMedia.svelte";
 	import { MessageMediaState } from "./message-media.svelte";
@@ -184,43 +181,29 @@
 	$effect(() => {
 		if (imageState.status !== "open") return;
 		const { image } = imageState;
-		let lightbox: PhotoSwipeLightbox | undefined;
-		import("photoswipe/lightbox")
-			.then(({ default: PhotoSwipeLightbox }) => {
-				lightbox = new PhotoSwipeLightbox({
-					showHideAnimationType: "fade",
-					pswpModule: () => import("photoswipe"),
-					mainClass: `pswp--buttons-visible`,
-				});
-				applyPhotoSwipeErrorUi(lightbox);
-				applyPhotoSwipeViewportSync(lightbox);
-				lightbox.addFilter("numItems", () => 1);
-				lightbox.addFilter("itemData", () => ({
+		const controller = new AbortController();
+		openLightbox({
+			items: [
+				{
 					src: image.url,
 					width: image.size?.width ?? 0,
 					height: image.size?.height ?? 0,
-				}));
-				lightbox.addFilter(
-					"useContentPlaceholder",
-					(usePlaceholder) => usePlaceholder && image.size !== null,
-				);
-				applyPhotoSwipeBackGesture(lightbox);
+				},
+			],
+			configure: (lightbox) => {
 				applyPhotoSwipeDownloadButton(lightbox);
-				lightbox.on("closingAnimationEnd", () => {
-					imageState = { status: "idle" };
-				});
-				lightbox.init();
-				lightbox.loadAndOpen(0);
-			})
-			.catch((error) => {
-				console.error(error);
-				showErrorToast({
-					label: "Failed to open expiring image",
-					error,
-				});
+			},
+			signal: controller.signal,
+			onClosed: () => {
 				imageState = { status: "idle" };
-			});
-		return () => lightbox?.destroy();
+			},
+		}).catch((error: unknown) => {
+			if (controller.signal.aborted) return;
+			console.error(error);
+			showErrorToast({ label: "Failed to open expiring image", error });
+			imageState = { status: "idle" };
+		});
+		return () => controller.abort();
 	});
 </script>
 

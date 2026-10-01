@@ -11,8 +11,10 @@
 	import {
 		type ConversationState,
 		getConversationState,
+		type OptimisticMessage,
 	} from "../conversation-state.svelte";
 	import { processMessages } from "../messages";
+	import { setMediaRenewal } from "./message/media-renewal";
 	import Message from "./message/Message.svelte";
 
 	let { seenMessageIds }: { seenMessageIds: Set<string> } = $props();
@@ -21,6 +23,7 @@
 	let reportProfileId = $state<number | null>(null);
 
 	const conversationState = $derived(getConversationState()());
+	setMediaRenewal(() => conversationState.dynamicRefresh.renewMedia());
 
 	const messages = $derived(
 		processMessages({
@@ -64,10 +67,27 @@
 			showErrorToast({ label: "Failed to unsend message", error });
 		}
 	}
+
+	async function deleteForMe(message: OptimisticMessage) {
+		const state = conversationState;
+		const { revert } = state.remove(message.messageId);
+		if (message.status === "error") return;
+		try {
+			await deleteMessageForMe({
+				conversationId: state.conversationId,
+				messageId: message.messageId,
+			});
+		} catch (error) {
+			console.error(error);
+			showErrorToast({ label: "Failed to delete message", error });
+			revert();
+		}
+	}
 </script>
 
 {#each messages.toReversed() as message (message.messageId)}
 	{@const isOut = message.senderId === conversationState.ourProfileId}
+	{@const delivered = message.status === "sent"}
 	<Message
 		{message}
 		{isOut}
@@ -84,23 +104,10 @@
 					conversationState.reportRead(message);
 				}
 			: undefined}
-		onDelete={async () => {
-			let revert: (() => void) | undefined;
-			try {
-				({ revert } = conversationState.remove(message.messageId));
-				await deleteMessageForMe({
-					conversationId: conversationState.conversationId,
-					messageId: message.messageId,
-				});
-			} catch (error) {
-				console.error(error);
-				showErrorToast({ label: "Failed to delete message", error });
-				revert?.();
-			}
-		}}
-		onReply={message.status !== "pending" &&
-		message.status !== "error" &&
-		!message.unsent
+		onDelete={message.status === "pending"
+			? undefined
+			: () => deleteForMe(message)}
+		onReply={delivered && !message.unsent
 			? () => conversationState.setReplyTo(message)
 			: undefined}
 		onReport={!isOut && conversationState.profile
@@ -121,7 +128,7 @@
 				showErrorToast({ label: "Failed to react to message", error });
 			}
 		}}
-		onUnsend={isOut && !message.unsent
+		onUnsend={isOut && delivered && !message.unsent
 			? () => void requestUnsend(message.messageId)
 			: undefined}
 		onCopyError={message.status === "error"

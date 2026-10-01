@@ -23,7 +23,9 @@
 		applyBackGestureHandler,
 		registerAndroidBackButtonListener,
 	} from "$lib/platform/android-native-bridge";
+	import { blockNativeMenu } from "$lib/platform/block-native-menu";
 	import { blockZoom } from "$lib/platform/block-zoom";
+	import { trackHoverPointer } from "$lib/platform/hover-pointer";
 	import {
 		requestSystemNotificationPermission,
 		syncBackgroundServiceState,
@@ -36,7 +38,9 @@
 	import { updatesSelfManaged } from "$lib/updates/capability.svelte";
 	import { startUpdateWatch } from "$lib/updates/updates-manager";
 	import {
+		bottomBlurBarClearance,
 		bottomChromeClearance,
+		topBlurBarClearance,
 		topChromeClearance,
 	} from "$lib/util/screen-chrome.svelte";
 
@@ -61,6 +65,8 @@
 		applyAndroidInsets();
 		applyBackGestureHandler();
 		const releaseZoomBlock = blockZoom();
+		const releaseNativeMenuBlock = blockNativeMenu();
+		const releaseHoverPointer = trackHoverPointer();
 		if (isAndroidPlatform()) {
 			void registerAndroidBackButtonListener().catch((error) => {
 				console.error("Failed to register back button listener", error);
@@ -77,7 +83,11 @@
 		void hydrateBackdropCompositing().catch((error: unknown) => {
 			console.error("Failed to read backdrop compositing", error);
 		});
-		return releaseZoomBlock;
+		return () => {
+			releaseZoomBlock();
+			releaseNativeMenuBlock();
+			releaseHoverPointer();
+		};
 	});
 
 	import { env } from "$env/dynamic/public";
@@ -135,8 +145,8 @@
 	});
 
 	const toastOffset = $derived({
-		top: `calc(max(var(--safe-area-top), ${topChromeClearance()}px) + 0.5rem)`,
-		bottom: `calc(max(var(--safe-area-bottom), ${bottomChromeClearance()}px) + 0.5rem)`,
+		top: `calc(max(var(--safe-area-top), ${topChromeClearance()}px, ${topBlurBarClearance()}px + var(--bar-content-gap)) + 0.5rem)`,
+		bottom: `calc(max(var(--safe-area-bottom), ${bottomChromeClearance()}px, ${bottomBlurBarClearance()}px + var(--bar-content-gap)) + 0.5rem)`,
 	});
 </script>
 

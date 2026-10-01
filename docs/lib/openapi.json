@@ -220,11 +220,11 @@
 		},
 		{
 			"name": "media/signed-cdn-files",
-			"description": "CDN files accessible via signed URLs signed with `Signature` query argument. New signed URLs are generated and populated in API responses when existing URL expires. `Expires` query argument holds expiration date in unix timestamp in seconds, 15 minutes.\n\nBase URL appears to be: `https://{distribution}.cloudfront.net/`, always take the full URL from the `url` property on the media object itself."
+			"description": "CDN files accessible via signed URLs signed with `Signature` query argument. `Expires` query argument holds expiration date in unix timestamp in seconds. Chat image URLs live 15 minutes: API responses repeat the same URL until it expires, then carry a new one. Album cover URLs live 30 minutes and are signed again in every response.\n\nBase URL appears to be: `https://{distribution}.cloudfront.net/`, always take the full URL from the `url` property on the media object itself."
 		},
 		{
 			"name": "messaging/albums",
-			"description": "WIP. No idea what SpankBank, pressie albums and paywalled albums are."
+			"description": "Pressie albums are albums other profiles shared with you. `POST /v3/pressie-albums/feed` lists them in `sharedAlbums`; `albumViewable: false` marks a locked one, and `POST /v3/pressie-albums/feed/paywall/` returns blurred previews of locked albums. `profileFeeds` holds new content from those albums, one entry per profile, with `paywallStatus: PAYWALL` on locked entries."
 		},
 		{
 			"name": "messaging/conversations"
@@ -479,7 +479,7 @@
 					}
 				},
 				"summary": "Add media to drawer",
-				"description": "MediaId must be obtained through [uploading](/grindr-api/messaging/drawer#upload-media)."
+				"description": "Takes a `mediaId` from [uploading](/grindr-api/messaging/drawer#upload-media). Videos are accepted and listed as `video/mp4`."
 			},
 			"delete": {
 				"tags": [
@@ -505,6 +505,7 @@
 					}
 				},
 				"summary": "Delete media from drawer",
+				"description": "Removes the item from the drawer. Album copies made with [Add drawer media to an album](/grindr-api/messaging/albums#add-drawer-media-to-an-album) are separate files and stay. The CDN may keep serving the deleted file's signed url from cache.",
 				"x-idempotent": true
 			}
 		},
@@ -3810,6 +3811,7 @@
 									"properties": {
 										"blocking": {
 											"type": "array",
+											"description": "newest first",
 											"items": {
 												"type": "object",
 												"properties": {
@@ -4192,7 +4194,7 @@
 					}
 				},
 				"summary": "Get Cascade",
-				"description": "Fetching the cascade also marks our profile online by always instantly setting `onlineUntil` to current time + exactly 600 s.",
+				"description": "Fetching the cascade also marks our profile online by always instantly setting `onlineUntil` to current time + exactly 600 s. Every cascade except a `favorites` one also moves our profile to `nearbyGeoHash`, whatever its filters or page.",
 				"x-query-groups": [
 					"CascadeQuery"
 				]
@@ -4552,6 +4554,7 @@
 									"properties": {
 										"hides": {
 											"type": "array",
+											"description": "oldest first",
 											"items": {
 												"type": "object",
 												"properties": {
@@ -6673,19 +6676,14 @@
 				},
 				"responses": {
 					"200": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/UndocumentedObject"
-								}
-							}
-						},
-						"description": "OK"
+						"description": "Empty."
+					},
+					"402": {
+						"description": "The album is full. Unlike [Upload media to an album](/grindr-api/messaging/albums#upload-media-to-an-album), its video counts toward `maxContentItemsPerAlbum`. Empty body."
 					}
 				},
-				"summary": "Albums content chat list-by-id",
-				"description": "Unknown, `{\"ids\":[852120758]}` returns 400",
-				"x-wip": true
+				"summary": "Add drawer media to an album",
+				"description": "Copies media from the [drawer](/grindr-api/messaging/drawer#get-media-in-drawer) into the album. `ids` are drawer media ids. A video id results in `400`, even within `maxVideoLength`."
 			}
 		},
 		"/v1/albums/storage": {
@@ -6821,7 +6819,7 @@
 						"description": "OK"
 					}
 				},
-				"summary": "Pressie albums feed paywall"
+				"summary": "Get previews of locked albums shared with us"
 			}
 		},
 		"/v3/pressie-albums/feed/{profileId}": {
@@ -7227,7 +7225,7 @@
 					}
 				},
 				"summary": "Refresh messages",
-				"description": "Requests the messages with the given message IDs."
+				"description": "Returns the messages with the given message IDs, oldest first. IDs of messages that don't exist are left out."
 			}
 		},
 		"/v4/chat/conversation/{conversationId}/read/{messageId}": {
@@ -9852,7 +9850,8 @@
 						"schema": {
 							"type": "integer",
 							"format": "int64"
-						}
+						},
+						"description": "Duration in milliseconds."
 					},
 					{
 						"name": "looping",
@@ -9889,7 +9888,7 @@
 					}
 				},
 				"summary": "Upload media",
-				"description": "A correct `Content-Type` request header is required. `length` is sent for audio and video, `looping` only for video."
+				"description": "Requires a correct `Content-Type`. Set `length` for audio and video, and `looping` for video. Videos are uploaded as `video/mp4`."
 			}
 		},
 		"/v4/media/upload": {
@@ -9937,10 +9936,13 @@
 							}
 						},
 						"description": "OK"
+					},
+					"403": {
+						"description": "Daily limit of new profile photos reached (`ERR_EXCEED_PROFILE_IMAGE_DAILY_LIMIT`, code `51`)."
 					}
 				},
 				"summary": "Upload media (legacy)",
-				"description": "You must ensure thumbCoords's width and height dimensions are equal, i.e. y2-y1 must equal x2-x1. Submitting a non-square thumbnail won't trigger any errors and it will be uploaded to the CDN, however attempting to use such illegal thumbnail dimensions image in [Edit profile photos](/grindr-api/users/profiles#edit-profile-photos) will result in it being silently dropped/skipped.\n\nAlso there is a legacy `POST /v3/me/profile/images`.",
+				"description": "`thumbCoords` must be square (`y2 - y1` equals `x2 - x1`). A non-square thumbnail uploads without error, but [Edit profile photos](/grindr-api/users/profiles#edit-profile-photos) silently drops it.\n\nA legacy `POST /v3/me/profile/images` also exists.",
 				"x-legacy": true
 			}
 		},
@@ -9971,7 +9973,7 @@
 					}
 				},
 				"summary": "Edit profile photos",
-				"description": "Setting both `primaryImageHash` and `secondaryImageHashes` to `null` works. But setting `primaryImageHash` to a hash value while setting `secondaryImageHashes` to null causes HTTP status 400 Bad Request error. It's recommended to just use `[]` for `secondaryImageHashes` rather than `null`.\n\nSupplied images must have square thumbnails, otherwise they will be silently skipped. See [Upload media (legacy)](/grindr-api/users/profiles#upload-media-legacy).\n\nRepeating `primaryImageHash` value in `secondaryImageHashes` array will result in secondaryImageHashes's entry being silently dropped from supplied request array. Repeating `secondaryImageHashes` values will result in successfully saving the array as-is to the server, however the official mobile client seems to drop repeating media when processing `secondaryImageHashes` response."
+				"description": "Both fields may be `null`. A `primaryImageHash` with `secondaryImageHashes: null` gets `400`; send `[]` instead.\n\nPhotos without a square thumbnail are silently skipped; see [Upload media (legacy)](/grindr-api/users/profiles#upload-media-legacy).\n\nA `secondaryImageHashes` entry equal to `primaryImageHash` is dropped. Repeated `secondaryImageHashes` entries are saved as sent."
 			},
 			"delete": {
 				"tags": [
@@ -12458,7 +12460,8 @@
 				"in": "query",
 				"schema": {
 					"type": "number",
-					"format": "float"
+					"format": "float",
+					"description": "number in centimeters, a range excludes profiles without a height"
 				}
 			},
 			"CascadeHeightCmMaxQuery": {
@@ -12466,7 +12469,8 @@
 				"in": "query",
 				"schema": {
 					"type": "number",
-					"format": "float"
+					"format": "float",
+					"description": "number in centimeters, a range excludes profiles without a height; the bound is loose, `130` also returns 131"
 				}
 			},
 			"CascadeWeightGramsMinQuery": {
@@ -12474,7 +12478,8 @@
 				"in": "query",
 				"schema": {
 					"type": "number",
-					"format": "float"
+					"format": "float",
+					"description": "number in grams, a range excludes profiles without a weight"
 				}
 			},
 			"CascadeWeightGramsMaxQuery": {
@@ -12482,7 +12487,8 @@
 				"in": "query",
 				"schema": {
 					"type": "number",
-					"format": "float"
+					"format": "float",
+					"description": "number in grams, a range excludes profiles without a weight; the bound is loose, `45000` also returns 45359"
 				}
 			},
 			"CascadeTribesQuery": {
@@ -12560,7 +12566,8 @@
 				"name": "favorites",
 				"in": "query",
 				"schema": {
-					"type": "boolean"
+					"type": "boolean",
+					"description": "`distanceMeters` is measured from our stored position (set by `PUT /v4/location` or any cascade without `favorites`), not from `nearbyGeoHash`"
 				}
 			},
 			"CascadeShowSponsoredProfilesQuery": {
@@ -12649,7 +12656,7 @@
 				"in": "query",
 				"name": "takenOnGrindr",
 				"required": true,
-				"description": "Media captured with the in-app camera. The official client uses a signed upload endpoint only when this is `true` and the `taken-on-grindr-signing-enabled` flag is on.",
+				"description": "Media captured with the in-app camera.",
 				"schema": {
 					"type": "boolean"
 				}
@@ -16302,7 +16309,7 @@
 								},
 								"paywallStatus": {
 									"type": "string",
-									"description": "e.g. `ALLOW`"
+									"description": "`ALLOW` or `PAYWALL` (locked)"
 								},
 								"seen": {
 									"type": "boolean"
@@ -17669,7 +17676,7 @@
 					},
 					"dynamic": {
 						"type": "boolean",
-						"description": "boolean, unknown purpose, WIP"
+						"description": "boolean, `true` for `Album` messages and `false` for `Text`, `Image` and `ExpiringImage` messages. Current bodies of dynamic messages are returned by [Refresh messages](/grindr-api/messaging/conversations#refresh-messages)"
 					},
 					"chat1Type": {
 						"description": "string, see [Message type](/grindr-api/messaging/messages#message-type)",
@@ -19541,7 +19548,8 @@
 					"1": "Negative",
 					"2": "Negative, on PrEP",
 					"3": "Positive",
-					"4": "Positive, undetectable"
+					"4": "Positive, undetectable",
+					"5": "Prefer to discuss"
 				},
 				"x-render-on-tag": "users/profiles",
 				"x-display-name": "HIV status"

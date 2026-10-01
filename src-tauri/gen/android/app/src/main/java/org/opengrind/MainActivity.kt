@@ -12,6 +12,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
+import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -47,6 +49,7 @@ class MainActivity : TauriActivity() {
 	private var webViewRef: WebView? = null
 	private var pendingWebViewWarning: WebViewSupport.Status? = null
 	private var shownWebViewWarning = false
+	private val hoverRepair = WebViewHoverRepair(context = this, webView = { webViewRef })
 
 	override val handleBackNavigation = false
 
@@ -388,7 +391,7 @@ class MainActivity : TauriActivity() {
 			isAppearanceLightNavigationBars = false
 		}
 		
-		ViewCompat.setOnApplyWindowInsetsListener(window.decorView) { view, insets ->
+		ViewCompat.setOnApplyWindowInsetsListener(findViewById<View>(android.R.id.content)) { view, insets ->
 			val bars = insets.getInsets(
 				WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
 			)
@@ -425,10 +428,21 @@ class MainActivity : TauriActivity() {
 		}
 	}
 
+	override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+		hoverRepair.observe(event)
+		return super.dispatchGenericMotionEvent(event)
+	}
+
+	override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+		hoverRepair.observe(event)
+		return super.dispatchTouchEvent(event)
+	}
+
 	override fun onWebViewCreate(webView: WebView) {
 		super.onWebViewCreate(webView)
 		webViewRef = webView
 		webView.settings.setGeolocationEnabled(false)
+		webView.isHapticFeedbackEnabled = false
 		webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
 		webView.overScrollMode = android.view.View.OVER_SCROLL_ALWAYS
 		webView.isVerticalScrollBarEnabled = false

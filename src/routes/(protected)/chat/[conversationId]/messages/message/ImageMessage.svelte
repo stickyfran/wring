@@ -11,14 +11,22 @@
 		applyPhotoSwipeThumbDimensions,
 		applyPhotoSwipeViewportSync,
 	} from "$lib/util/photoswipe";
+	import { stableSignedUrl } from "$lib/util/signed-url";
 	import type { ImageMessage } from "$lib/model/messaging/messages";
 	import type { MediaDimensions } from "$lib/util/media-dimensions";
+	import { mediaRenewal } from "./media-renewal";
 	import { MessageMediaState } from "./message-media.svelte";
 
 	let { message }: { message: ImageMessage["body"] } = $props();
 
 	const media = new MessageMediaState();
-	const src = $derived(proxyMediaUrl(message.url));
+	const renewMedia = mediaRenewal();
+	let loadedUrl = $state<string | null>(null);
+	const tileUrl = $derived(
+		stableSignedUrl({ latest: message.url, loaded: loadedUrl }),
+	);
+	const src = $derived(proxyMediaUrl(tileUrl));
+	const href = $derived(proxyMediaUrl(message.url));
 
 	let failedSrc: string | null = $state(null);
 	const failed = $derived(failedSrc === src);
@@ -151,7 +159,7 @@
 	{@attach media.attach}
 >
 	<a
-		href={failed ? undefined : src}
+		href={failed ? undefined : href}
 		rel="noreferrer"
 		data-pswp-width={size.width ?? undefined}
 		data-pswp-height={size.height ?? undefined}
@@ -166,9 +174,11 @@
 			imgClass="bg-card-foreground/10"
 			{aspectRatio}
 			onload={({ naturalWidth, naturalHeight }) => {
+				loadedUrl = tileUrl;
 				measured = { src, width: naturalWidth, height: naturalHeight };
 			}}
 			bind:failedSrc
+			onexpired={renewMedia}
 		/>
 	</a>
 	{@render media.adornments?.()}

@@ -351,10 +351,14 @@ describe("ConversationState send timestamp", () => {
 
 		state.send([outbound("Text", { text: "a" })]);
 		const optimisticTimestamp = state.messages[0]!.timestamp;
-		emitMessageSent(echo("real-a", "Text", { text: "a" }));
+		emitMessageSent({
+			...echo("real-a", "Text", { text: "a" }),
+			dynamic: true,
+		});
 
 		expect(optimisticTimestamp).not.toBe(5000);
 		expect(state.messages[0]!.messageId).toBe("real-a");
+		expect(state.messages[0]!.dynamic).toBe(true);
 		expect(state.messages[0]!.timestamp).toBe(5000);
 		expect(conversations.updatePreview).toHaveBeenLastCalledWith(
 			expect.objectContaining({
@@ -596,6 +600,10 @@ describe("ConversationState unsend preview", () => {
 		reconcileHandlers.length = 0;
 	});
 
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	async function withTwoMessages(
 		conversations: ReturnType<typeof conversationsStub>,
 	) {
@@ -640,5 +648,22 @@ describe("ConversationState unsend preview", () => {
 		revert();
 
 		expect(conversations.updatePreview).not.toHaveBeenCalled();
+	});
+
+	it("rewrites the inbox row when the message under a failed send is unsent", async () => {
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		sendMessageMock.mockRejectedValueOnce(new Error("offline"));
+		const conversations = conversationsStub();
+		const state = await withTwoMessages(conversations);
+		state.send([outbound("Text", { text: "failed" })]);
+		await flush();
+
+		state.markMessageAsUnsent("m2");
+
+		expect(conversations.updatePreview).toHaveBeenLastCalledWith({
+			conversationId: CONVERSATION_ID,
+			preview: expect.objectContaining({ type: "Unsent" }),
+			timestamp: 2000,
+		});
 	});
 });

@@ -3,13 +3,14 @@ import { toast } from "svelte-sonner";
 import { accountScoped } from "$lib/api/account-caches";
 import { httpStatusOf } from "$lib/api/api-error";
 import {
+	addDrawerMediaToAlbum,
 	type AlbumContentResponse,
 	getAlbumContent,
 	getAlbumContentProcessing,
 	getMyAlbums,
 	uploadAlbumContent,
 } from "$lib/api/messaging/albums";
-import { asAppError, errorKindOf } from "$lib/api/methods";
+import { errorKindOf, uploadRefusalMessage } from "$lib/api/methods";
 import { albumMediaCounts } from "$lib/components/album/album";
 import { forgetAlbumSlides } from "$lib/components/album/album-lightbox";
 import { delay } from "$lib/util/delay";
@@ -74,36 +75,6 @@ function isRefusal(error: unknown): boolean {
 	return kind === "ContentTooLarge" || kind === "Media";
 }
 
-function albumMediaErrorMessage({
-	error,
-	limits,
-}: {
-	error: unknown;
-	limits: UploadLimits;
-}): string | null {
-	if (
-		errorKindOf(error) === "ContentTooLarge" ||
-		httpStatusOf(error) === 413
-	) {
-		return `Larger than the ${limits.maxContentSizeHumanReadable} limit`;
-	}
-	return null;
-}
-
-function refusalMessage({
-	error,
-	limits,
-}: {
-	error: unknown;
-	limits: UploadLimits;
-}): string | null {
-	const tooLarge = albumMediaErrorMessage({ error, limits });
-	if (tooLarge !== null) return tooLarge;
-	if (errorKindOf(error) !== "Media") return null;
-	const detail = asAppError(error)?.message;
-	return typeof detail === "string" && detail !== "" ? detail : null;
-}
-
 function outOfRoomMessage({ inspection, limits }: QueuedUpload): string {
 	const count =
 		inspection.kind === "video"
@@ -120,6 +91,8 @@ function failureMessage(kind: UploadKind): string {
 class AlbumUploadsState {
 	readonly #profileId: number;
 	#queue = $state.raw<QueuedUpload[]>([]);
+	#landing = $state.raw<QueuedUpload[]>([]);
+	#landings = new Map<number, Promise<void>>();
 	#drafts = new Map<number, UploadLanding>();
 	#landed = new Map<number, Set<number>>();
 	#watching = new Set<string>();
@@ -132,7 +105,7 @@ class AlbumUploadsState {
 	}
 
 	pending(albumId: number): PendingUpload[] {
-		return this.#queue
+		return [...this.#landing, ...this.#queue]
 			.filter((queued) => queued.albumId === albumId)
 			.map(({ media, inspection }) => ({
 				key: media.key,
@@ -141,7 +114,7 @@ class AlbumUploadsState {
 	}
 
 	hasPending(albumId: number): boolean {
-		return this.#queue.some((queued) => queued.albumId === albumId);
+		return this.pending(albumId).length > 0;
 	}
 
 	attachDraft({
@@ -223,6 +196,8 @@ class AlbumUploadsState {
 	#drop(): void {
 		this.#epoch += 1;
 		this.#queue = [];
+		this.#landing = [];
+		this.#landings.clear();
 		this.#drafts.clear();
 		this.#landed.clear();
 		this.#watching.clear();
@@ -271,8 +246,32 @@ class AlbumUploadsState {
 				await this.#recover({ entry, error, sha256, before });
 			return;
 		}
-		if (epoch === this.#epoch)
-			await this.#land({ albumId: entry.albumId, contentId });
+		if (epoch === this.#epoch) this.#landInBackground({ entry, contentId });
+	}
+
+	#landInBackground({
+		entry,
+		contentId,
+	}: {
+		entry: QueuedUpload;
+		contentId: number;
+	}): void {
+		const { albumId } = entry;
+		this.#landedIds(albumId).add(contentId);
+		this.#queue = this.#queue.filter((queued) => queued !== entry);
+		this.#landing = [...this.#landing, entry];
+		const previous = this.#landings.get(albumId) ?? Promise.resolve();
+		const landed = previous
+			.then(() => this.#land({ albumId, contentId }))
+			.finally(() => {
+				this.#landing = this.#landing.filter(
+					(landing) => landing !== entry,
+				);
+			});
+		this.#landings.set(
+			albumId,
+			landed.catch((error: unknown) => console.error(error)),
+		);
 	}
 
 	async #recover({
@@ -299,7 +298,7 @@ class AlbumUploadsState {
 			});
 			if (epoch !== this.#epoch) return;
 			if (contentId !== null) {
-				await this.#land({ albumId: entry.albumId, contentId });
+				this.#landInBackground({ entry, contentId });
 				return;
 			}
 		}
@@ -314,8 +313,10 @@ class AlbumUploadsState {
 			return;
 		}
 		toast.error(
-			refusalMessage({ error, limits: entry.limits }) ??
-				failureMessage(entry.inspection.kind),
+			uploadRefusalMessage({
+				error,
+				limitLabel: entry.limits.maxContentSizeHumanReadable,
+			}) ?? failureMessage(entry.inspection.kind),
 		);
 	}
 
@@ -347,6 +348,44 @@ class AlbumUploadsState {
 			if (landed !== undefined) return landed.contentId;
 		}
 		return null;
+	}
+
+	async addFromDrawer({
+		albumId,
+		mediaIds,
+		present,
+	}: {
+		albumId: number;
+		mediaIds: number[];
+		present: readonly number[];
+	}): Promise<void> {
+		await addDrawerMediaToAlbum({ albumId, mediaIds });
+		forgetAlbumSlides(albumId);
+		void this.#landAdded({ albumId, present: new Set(present) });
+	}
+
+	async #landAdded({
+		albumId,
+		present,
+	}: {
+		albumId: number;
+		present: ReadonlySet<number>;
+	}): Promise<void> {
+		const epoch = this.#epoch;
+		const content = await this.#readContent(albumId);
+		if (epoch !== this.#epoch) return;
+		if (content === null) {
+			toast.success(LOST_READ_MESSAGE);
+			return;
+		}
+		const draft = this.#drafts.get(albumId);
+		const added = content.filter((item) => !present.has(item.contentId));
+		for (const item of added.toReversed()) {
+			this.#landedIds(albumId).add(item.contentId);
+			draft?.land(item);
+			if (item.processing)
+				void this.#watch({ albumId, contentId: item.contentId });
+		}
 	}
 
 	async #land({

@@ -2,16 +2,15 @@ import { expect, type Locator, type Page, test } from "@playwright/test";
 
 import {
 	captureInvokes,
+	INCOMING_ROW,
 	installTauriShim,
+	MESSAGE_ROW,
 	trackpadSwipe,
 	TrustedTouch,
 } from "./support/app";
 
 const CONVERSATION = "/chat/100001:123456000";
 const WITH_AN_UNSENT_MESSAGE = "/chat/100009:123456000";
-const MESSAGE_ROW = '[role="button"][tabindex="0"]';
-// only an incoming row pads its end, and only incoming rows swipe rightward
-const INCOMING_ROW = `${MESSAGE_ROW}.pe-3`;
 const SCROLLER = '[data-slot="messages-scroller"]';
 const QUOTE = '[data-slot="message-quote"]';
 const REPLIABLE = "consectetur adipiscing elit";
@@ -190,19 +189,19 @@ test("a touch drag taps the actuator as it passes the trigger, once", async ({
 	page,
 }) => {
 	await openConversation(page, { platform: "android" });
-	const taps = await captureInvokes(page, "play_threshold_haptic");
+	const taps = await captureInvokes(page, "play_haptic");
 
 	await swipeIncoming(page, 140);
 
 	await expect(page.getByLabel("Cancel reply")).toBeVisible();
-	expect(await taps()).toHaveLength(1);
+	expect(await taps()).toEqual([{ kind: "threshold" }]);
 });
 
 test("a touch drag that stops short of the trigger taps nothing", async ({
 	page,
 }) => {
 	await openConversation(page, { platform: "android" });
-	const taps = await captureInvokes(page, "play_threshold_haptic");
+	const taps = await captureInvokes(page, "play_haptic");
 
 	await swipeIncoming(page, 40);
 

@@ -28,6 +28,7 @@
 		"check:credits": "bun scripts/gen-credits.ts --check",
 		"check:credits-sync": "bun scripts/check-credits-sync.ts",
 		"check:credits-android": "bun scripts/check-android-credits.ts",
+		"package:linux": "podman build -t open-grind-linux ci/linux && podman run --rm -v \"$PWD:/work\" open-grind-linux sh ci/linux/build.sh",
 		"package:macos": "nix run .#build-macos --",
 		"lint": "svelte-kit sync && eslint --concurrency=2 .",
 		"preview": "vite preview",
@@ -39,6 +40,10 @@
 		"test:coverage": "svelte-kit sync && vitest run --coverage",
 		"test:unit": "svelte-kit sync && vitest run",
 		"test:e2e": "playwright test",
+		"test:e2e:guard": "playwright test -c playwright.guard.config.ts",
+		"test:live": "playwright test -c e2e-live/playwright.live.config.ts --project flows",
+		"test:live:sweep": "playwright test -c e2e-live/playwright.live.config.ts --project sweep",
+		"test:live:device": "playwright test -c e2e-live/playwright.live.config.ts --project device",
 		"dev:updater-server": "bun scripts/updater-release-server.ts",
 		"test:android": "cd src-tauri/gen/android && ./gradlew :app:testUniversalReleaseUnitTest",
 		"test:android-logic": "src-tauri/gen/android/gradlew -p src-tauri/android-logic test"
@@ -76,6 +81,7 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
+		"@axe-core/playwright": "^4.13.0",
 		"@fontsource-variable/ibm-plex-sans": "^5.2.8",
 		"@icons-pack/svelte-simple-icons": "^7.2.0",
 		"@internationalized/date": "^3.12.1",
@@ -113,6 +119,7 @@
 	"patchedDependencies": {
 		"vaul-svelte@1.0.0-next.7": "patches/vaul-svelte@1.0.0-next.7.patch",
 		"@sveltejs/kit@2.70.2": "patches/@sveltejs%2Fkit@2.70.2.patch",
-		"svelte-sonner@1.1.1": "patches/svelte-sonner@1.1.1.patch"
+		"svelte-sonner@1.1.1": "patches/svelte-sonner@1.1.1.patch",
+		"bits-ui@2.19.2": "patches/bits-ui@2.19.2.patch"
 	}
 }

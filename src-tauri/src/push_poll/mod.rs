@@ -7,4 +7,9 @@ mod pushes;
 mod session;
 
 #[cfg(target_os = "android")]
-use pushes::{poll, Inbox, Poll, Watermarks};
+pub use pushes::line_key;
+#[cfg(target_os = "android")]
+use pushes::{
+	messages_path, pages_wanted, poll, Inbox, Pages, Poll, Push,
+	ShownConversation, Watermarks,
+};

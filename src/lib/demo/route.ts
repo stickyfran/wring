@@ -14,6 +14,7 @@ import type { InboxFilterRequest } from "$lib/api/messaging/conversations";
 import type { FavoriteNote } from "$lib/model/users/favorites";
 import { demoMeProfileId } from "./config";
 import {
+	demoAddToAlbum,
 	demoAlbumContent,
 	demoAlbumContentProcessing,
 	demoAlbumExists,
@@ -33,7 +34,9 @@ import {
 	demoConversationMessages,
 	demoConversations,
 	demoDeleteConversation,
+	demoDeleteDrawerMedia,
 	demoDrawerMedia,
+	demoMessagesById,
 	demoSentMessage,
 	demoSetConversationMuted,
 	demoSetConversationPinned,
@@ -257,6 +260,15 @@ export function demoRoute({
 	) {
 		return ok(demoSingleMessage({ conversationId, messageId }));
 	}
+	if (
+		method === "POST" &&
+		segments[0] === "v4" &&
+		segments[2] === "conversation" &&
+		segments[4] === "message-by-id"
+	) {
+		const { messageIds = [] } = body as { messageIds?: string[] };
+		return ok(demoMessagesById({ conversationId, messageIds }));
+	}
 	if (method === "GET" && rawPath === "/v1/albums") {
 		return ok(demoMyAlbums());
 	}
@@ -326,6 +338,28 @@ export function demoRoute({
 	) {
 		const { albumName } = albumNameRequestSchema.parse(body);
 		return ok(demoRenameAlbum({ albumId: Number(segments[2]), albumName }));
+	}
+	if (
+		method === "POST" &&
+		segments[0] === "v1" &&
+		segments[1] === "albums" &&
+		segments[3] === "content" &&
+		segments[4] === "chat" &&
+		segments[5] === "list-by-id"
+	) {
+		const ids = (body as { ids?: number[] } | null)?.ids ?? [];
+		const drawer = new Map(
+			demoDrawerMedia().map((item) => [item.id, item]),
+		);
+		const added = demoAddToAlbum({
+			albumId: Number(segments[2]),
+			kinds: ids.map((id) =>
+				drawer.get(id)?.contentType.startsWith("video/")
+					? "video"
+					: "photo",
+			),
+		});
+		return added ? ok(null) : { status: 402, body: null };
 	}
 	if (
 		method === "POST" &&
@@ -406,8 +440,12 @@ export function demoRoute({
 		demoDeleteConversation(conversationId);
 		return ok({});
 	}
-	if (method === "GET" && rawPath.startsWith("/v4/chat/media/drawer/")) {
+	if (method === "GET" && rawPath.startsWith("/v4/chat/media/drawer")) {
 		return ok(demoDrawerMedia());
+	}
+	if (method === "DELETE" && rawPath.startsWith("/v4/chat/media/drawer/")) {
+		demoDeleteDrawerMedia(Number(segments.at(-1)));
+		return ok({});
 	}
 	if (method === "GET" && rawPath === "/v3/places/search") {
 		return ok({ places: [] });

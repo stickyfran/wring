@@ -10,7 +10,6 @@
 	import { showErrorToast } from "$lib/api/error-toast";
 	import { ProfileModerationError } from "$lib/api/users/profile-moderation";
 	import {
-		deleteProfilePhotos,
 		type ProfileUpdate,
 		updateOwnProfile,
 	} from "$lib/api/users/profiles";
@@ -19,7 +18,10 @@
 	import TextField from "$lib/components/fields/TextField.svelte";
 	import SaveChangesBar from "$lib/components/shared/SaveChangesBar.svelte";
 	import { WheelPicker } from "$lib/components/ui/carousel";
-	import { type Profile } from "$lib/model/users/profiles";
+	import {
+		type Profile,
+		PROFILE_PHOTO_AWAITING_REVIEW,
+	} from "$lib/model/users/profiles";
 	import { deepEqual } from "$lib/util/deep-equal";
 	import type { Gender } from "$lib/model/users/genders";
 	import type { Pronoun } from "$lib/model/users/pronouns";
@@ -54,6 +56,7 @@
 		vaccineOptions,
 		weightKgRange,
 	} from "./options";
+	import { saveProfilePhotoOrder } from "./profile-photo-order";
 	import ProfilePicturesUpload from "./ProfilePicturesUpload.svelte";
 
 	let {
@@ -114,7 +117,11 @@
 		instagram: initial.socialNetworks.instagram?.userId ?? null,
 		twitter: initial.socialNetworks.twitter?.userId ?? null,
 		facebook: initial.socialNetworks.facebook?.userId ?? null,
-		medias: initial.medias.map((media) => ({ mediaHash: media.mediaHash })),
+		medias: initial.medias.map((media) => ({
+			mediaHash: media.mediaHash,
+			pending: media.state === PROFILE_PHOTO_AWAITING_REVIEW,
+		})),
+		removedPhotos: [] as string[],
 	});
 
 	let saving = $state(false);
@@ -167,24 +174,27 @@
 			showDistance: initial.showDistance,
 			profileTags: sent.profileTags,
 		} satisfies ProfileUpdate;
-		const currentHashes = new Set(
-			sent.medias.map((media) => media.mediaHash),
+		const removedPhotos = new Set(sent.removedPhotos);
+		const keptPhotos = sent.medias.filter(
+			(media) => !removedPhotos.has(media.mediaHash),
 		);
-		const removedHashes = savedForm.medias
-			.map((media) => media.mediaHash)
-			.filter((hash) => !currentHashes.has(hash));
 		try {
 			await Promise.all([
 				updateOwnProfile({
 					cacheProfileId: ourProfileId,
 					profile: body,
 				}),
-				deleteProfilePhotos({
+				saveProfilePhotoOrder({
 					cacheProfileId: ourProfileId,
-					mediaHashes: removedHashes,
+					saved: savedForm.medias.map((media) => media.mediaHash),
+					kept: keptPhotos.map((media) => media.mediaHash),
 				}),
 			]);
-			savedForm = sent;
+			form.medias = form.medias.filter(
+				(media) => !removedPhotos.has(media.mediaHash),
+			);
+			form.removedPhotos = [];
+			savedForm = { ...sent, medias: keptPhotos, removedPhotos: [] };
 			toast.success("Profile updated");
 		} catch (error) {
 			if (error instanceof ProfileModerationError) {
@@ -210,7 +220,12 @@
 	<fieldset disabled={saving} class="contents">
 		<section class="flex flex-col gap-3">
 			<h2>Photos</h2>
-			<ProfilePicturesUpload bind:medias={form.medias} />
+			<ProfilePicturesUpload
+				bind:medias={form.medias}
+				bind:removed={form.removedPhotos}
+				{ourProfileId}
+				disabled={saving}
+			/>
 		</section>
 
 		<section class="flex flex-col gap-3">

@@ -59,7 +59,7 @@ docker image rm open-grind-build   # removes the thin image
 
 ### Build apk with Nix only (faster)
 
-Open Grind ships a [Nix flake](./flake.nix) that pins the entire Android toolchain — Rust, the JDK, the Android SDK, the NDK, Gradle, Bun, and Node.js — so any contributor on Linux or macOS can produce an identical build in an identical environment.
+Open Grind ships a [Nix flake](./flake.nix) that pins the entire Android toolchain — Rust, the JDK, the Android SDK, the NDK, Gradle, Bun, and Node.js — so a native build on x86_64 Linux reproduces the release. On Apple Silicon, only the [Docker build](#build-apk-with-nix-in-docker-easiest) does.
 
 - [Nix](https://nixos.org/download) >= 2.18
 - ~30 GB of disk space
@@ -72,7 +72,7 @@ Open Grind ships a [Nix flake](./flake.nix) that pins the entire Android toolcha
 > First time you run `nix develop` or `nix run` in Open Grind's repository, Nix will download and setup about 3 GB environment, which might take some time, depending on your internet connection speed.
 
 > [!NOTE]
-> If you use [direnv](https://direnv.net/), the bundled [.envrc](./.envrc) activates the dev shell automatically when you `cd` into the repository.
+> If you use [direnv](https://direnv.net/), the bundled [.envrc](./.envrc) activates the dev shell automatically when you `cd` into the repository. `nix run .#build-*` started from a dev shell drops its environment and keeps only `HOME`, `USER`, `LOGNAME`, `TERM`, locale, proxy and CA certificate variables, `CARGO_HOME`, `XWIN_CACHE_DIR`, `NODE_OPTIONS`, `OPEN_GRIND_*`, `MACOS_*` and the `PATH` entries outside the Nix store.
 
 ### Build apk manually (advanced)
 
@@ -171,7 +171,9 @@ podman build -t open-grind-linux ci/linux
 podman run --rm -v "$PWD:/work" open-grind-linux sh ci/linux/build.sh
 ```
 
-The result is `src-tauri/target/release/bundle/deb/open-grind-v<version>-linux-<arch>.deb` and `src-tauri/target/release/bundle/appimage/open-grind-v<version>-linux-<arch>.AppImage`.
+`bun run package:linux` runs both. Docker takes the same two commands with `docker` in place of `podman`.
+
+The result is `src-tauri/target/release/bundle/deb/open-grind-v<version>-linux-<arch>.deb` and `src-tauri/target/release/bundle/appimage/open-grind-v<version>-linux-<arch>.AppImage`. Each run empties both directories first, so they only ever hold the latest build.
 
 The script repacks what `tauri build` generated with `dpkg-deb` under `SOURCE_DATE_EPOCH`, because tauri-bundler writes clock mtimes and unsorted entries ([tauri#13612](https://github.com/tauri-apps/tauri/issues/13612)).
 
@@ -233,7 +235,7 @@ A macOS build needs a Mac. Nix pins the toolchain and remaps the build paths the
 nix run .#build-macos
 ```
 
-This builds a universal app, signs it, and writes the release zip to `src-tauri/target/release/artifacts/`. The signature is not reproducible without the key, so [reproducing a release](./REPRODUCIBILITY.md#macos) strips it from both sides. The build always enables the `keychain` feature, ad-hoc builds therefore cannot read back credentials an earlier build wrote. A release build refuses to run from anywhere but `/Applications` or `~/Applications`. Debug builds do not reproduce; the release profile is the default, `nix run .#build-macos -- --debug` to opt out.
+This builds a universal app, signs it ad-hoc unless `MACOS_SIGN_IDENTITY` is set, and writes the release zip to `src-tauri/target/release/artifacts/`. The ad-hoc zip [reproduces](./REPRODUCIBILITY.md#macos) byte for byte. The build always enables the `keychain` feature, ad-hoc builds therefore cannot read back credentials an earlier build wrote. A release build refuses to run from anywhere but `/Applications` or `~/Applications`. Debug builds do not reproduce; the release profile is the default, `nix run .#build-macos -- --debug` to opt out.
 
 ### Build for the App Store
 
@@ -250,7 +252,7 @@ The default build uses two private macOS APIs: WebKit's `_setUseSystemAppearance
 | `MACOS_SIGN_IDENTITY`  | `-`     | `-` is ad-hoc                                                  |
 | `MACOS_NOTARY_PROFILE` | unset   | `notarytool` keychain profile; when set, notarizes and staples |
 
-`src-tauri/entitlements.plist` is passed to `codesign` when it exists.
+`src-tauri/entitlements.plist` is passed to the signer when it exists. Ad-hoc builds are signed by the pinned `rcodesign`, Developer ID builds by macOS `codesign`.
 
 For distribution, store the notary credentials once, then build:
 

@@ -521,7 +521,7 @@ class ConversationsState {
 
 	get hasUnreadInbox(): boolean {
 		return this.inboxViewed.hasUnreadAmong(
-			this.entries.filter((e) => !e.data.pinned && !e.data.favorite),
+			this.entries.filter((e) => !e.data.pinned),
 		);
 	}
 

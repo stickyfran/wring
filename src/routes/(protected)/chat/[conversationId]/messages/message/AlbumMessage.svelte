@@ -10,11 +10,13 @@
 	import type { AlbumMessage } from "$lib/model/messaging/messages";
 	import { getConversationState } from "../../conversation-state.svelte";
 	import LockedMedia from "./LockedMedia.svelte";
+	import { mediaRenewal } from "./media-renewal";
 	import { MessageMediaState } from "./message-media.svelte";
 
 	let { message }: { message: AlbumMessage["body"] } = $props();
 
 	const media = new MessageMediaState();
+	const renewMedia = mediaRenewal();
 	const conversationState = $derived(getConversationState()());
 	const peerProfileId = $derived(
 		conversationState.profile?.profileId ?? null,
@@ -59,6 +61,7 @@
 		class={[className, { "opacity-75": !isViewable }]}
 		{contentClass}
 		attach={media.attach}
+		onexpired={renewMedia}
 	>
 		{#if !isViewable}
 			<div

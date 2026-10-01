@@ -5,6 +5,7 @@ import {
 	FIRST_ROUTE_COMPILE_MS,
 	installTauriShim,
 } from "./support/app";
+import { BLUR_MODES, setBlurMode } from "./support/layout-guard";
 import {
 	APP_SETTINGS,
 	dim,
@@ -15,10 +16,19 @@ import {
 	SETTINGS,
 } from "./support/page-stack";
 import {
+	DARK_SCRIM,
+	edgeLineColumns,
+	expectEdgeJustLeftOf,
+	pauseMidSlide,
+	resumeSlides,
+	scrimStrength,
+} from "./support/stack-layers";
+import {
 	cancelSystemBack,
 	commitSystemBack,
 	progressSystemBack,
 	startSystemBack,
+	startSystemBackMidSlide,
 } from "./support/system-back";
 
 test.describe.configure({ timeout: 180_000 });
@@ -41,13 +51,9 @@ const panePosition = (page: Page) =>
 		const behind = document.querySelector<HTMLElement>(
 			'[data-slot="page-stack-ghost"]',
 		);
-		const shade = document.querySelector<HTMLElement>(
-			'[data-slot="page-stack-dim"]',
-		);
 		return {
 			live: live.getBoundingClientRect().x,
 			behind: behind?.getBoundingClientRect().x ?? null,
-			dim: Number(shade?.style.opacity ?? -1),
 		};
 	});
 
@@ -233,9 +239,11 @@ test("the panes follow the system back gesture's progress", async ({
 
 	await progressSystemBack(page, 0.25);
 	const quarter = await panePosition(page);
+	const quarterScrim = await scrimStrength(dim(page));
 
 	await progressSystemBack(page, 0.75);
 	const most = await panePosition(page);
+	const mostScrim = await scrimStrength(dim(page));
 
 	await cancelSystemBack(page);
 
@@ -243,8 +251,69 @@ test("the panes follow the system back gesture's progress", async ({
 	expect(quarter.behind).toBeLessThan(0);
 	expect(most.live).toBeGreaterThan(quarter.live);
 	expect(most.behind).toBeGreaterThan(quarter.behind!);
-	expect(most.dim).toBeLessThan(quarter.dim);
-	expect(quarter.dim).toBeLessThanOrEqual(0.1);
+	expect(quarterScrim).toBeCloseTo(DARK_SCRIM * 0.75, 2);
+	expect(mostScrim).toBeCloseTo(DARK_SCRIM * 0.25, 2);
+});
+
+test("the page sliding off draws a one-pixel edge against the dimmed page underneath", async ({
+	page,
+}) => {
+	await openSettings(page);
+	await openAppSettings(page);
+
+	expect(await startSystemBack(page)).toBe(true);
+	await progressSystemBack(page, 0.25);
+	const { live } = await panePosition(page);
+
+	expect(live).toBeGreaterThan(0);
+	await expectEdgeJustLeftOf(page, { x: live });
+	await cancelSystemBack(page);
+});
+
+test("the Back button slides the page off with the same edge over the same scrim", async ({
+	page,
+}) => {
+	const { width, height } = page.viewportSize()!;
+	await openSettings(page);
+	await openAppSettings(page);
+
+	const paused = pauseMidSlide(page, {
+		pane: '[data-slot="page-stack-ghost"]',
+	});
+	await backLink(page).click();
+	const leaving = await paused;
+
+	expect(leaving).toBeLessThan(width);
+	expect(await scrimStrength(dim(page))).toBeCloseTo(
+		DARK_SCRIM * (1 - leaving / width),
+		2,
+	);
+	await expectEdgeJustLeftOf(page, {
+		x: leaving,
+		clip: { x: Math.floor(leaving) - 4, y: 0, width: 8, height },
+	});
+
+	await resumeSlides(page);
+	await expect(page).toHaveURL(new RegExp(`${SETTINGS}$`));
+	await expect(ghost(page)).toHaveCount(0, { timeout: 5_000 });
+});
+
+test("a page at rest shows no edge along the left of the screen in any blur mode", async ({
+	page,
+}) => {
+	await openSettings(page);
+	await openAppSettings(page);
+	const { height } = page.viewportSize()!;
+
+	for (const mode of BLUR_MODES) {
+		await setBlurMode(page, mode);
+		expect(
+			await edgeLineColumns(page, {
+				clip: { x: 0, y: 0, width: 2, height },
+			}),
+			mode,
+		).toEqual([]);
+	}
 });
 
 test("committing the system back gesture navigates back", async ({ page }) => {
@@ -260,6 +329,39 @@ test("committing the system back gesture navigates back", async ({ page }) => {
 	});
 	await expect(ghost(page)).toHaveCount(0, { timeout: 5_000 });
 	expect(await documentOverflow(page)).toEqual({ x: 0, y: 0 });
+});
+
+test("a back gesture during the slide-in picks the page up where it is, lets the finger drive the rest, and canceling finishes the slide-in", async ({
+	page,
+}) => {
+	const width = page.viewportSize()!.width;
+	await openSettings(page);
+
+	const pickUp = startSystemBackMidSlide(
+		page,
+		'[data-slot="page-stack-pane"]',
+	);
+	await page.getByRole("link", { name: "App Settings" }).click();
+	const { started, before, pickedUp, aFrameLater } = await pickUp;
+
+	expect(started).toBe(true);
+	expect(pickedUp, "the page stays where it was").toBeCloseTo(before, -1);
+	expect(aFrameLater, "the page must not snap fully in").toBeGreaterThan(0);
+	expect(aFrameLater).toBeLessThanOrEqual(before);
+	await expect(ghost(page)).toContainText("Sign Out");
+
+	await progressSystemBack(page, 0.5);
+	expect((await panePosition(page)).live).toBeGreaterThanOrEqual(
+		width / 2 - 1,
+	);
+	await expect
+		.poll(async () => (await panePosition(page)).live)
+		.toBeCloseTo(width / 2, 0);
+
+	await cancelSystemBack(page);
+	await expect(ghost(page)).toHaveCount(0, { timeout: 5_000 });
+	await expect(page).toHaveURL(new RegExp(`${APP_SETTINGS}$`));
+	expect((await panePosition(page)).live).toBe(0);
 });
 
 test("a back swipe started while the last one is still sliding out goes back from where that one lands", async ({
@@ -328,13 +430,14 @@ test("reduced motion swaps pages at once, yet the back gesture still follows the
 	expect(await startSystemBack(page)).toBe(true);
 	await progressSystemBack(page, 0.25);
 	const quarter = await panePosition(page);
+	const quarterScrim = await scrimStrength(dim(page));
 	await progressSystemBack(page, 0.75);
 	const most = await panePosition(page);
 
 	expect(most.live).toBeGreaterThan(quarter.live);
 	expect(quarter.behind).toBe(0);
 	expect(most.behind).toBe(0);
-	expect(quarter.dim).toBeGreaterThan(0);
+	expect(quarterScrim).toBeCloseTo(DARK_SCRIM * 0.75, 2);
 
 	await commitSystemBack(page);
 	await expect(page).toHaveURL(new RegExp(`${SETTINGS}$`), {

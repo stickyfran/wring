@@ -5,13 +5,22 @@ import {
 	DEMO_CONVERSATION,
 	FIRST_ROUTE_COMPILE_MS,
 	installTauriShim,
+	MESSAGE_ROW,
 	pathname,
 } from "./support/app";
+import { BLUR_MODES, setBlurMode } from "./support/layout-guard";
+import {
+	DARK_SCRIM,
+	edgeLineColumns,
+	expectEdgeJustLeftOf,
+	scrimStrength,
+} from "./support/stack-layers";
 import {
 	cancelSystemBack,
 	commitSystemBack,
 	progressSystemBack,
 	startSystemBack,
+	startSystemBackMidSlide,
 } from "./support/system-back";
 
 const PHONE = { width: 390, height: 844 };
@@ -28,9 +37,7 @@ const backToChats = (page: Page) =>
 	page.getByRole("link", { name: "Back to chats" });
 const REPLIABLE = "consectetur adipiscing elit";
 const messageRow = (page: Page) =>
-	page
-		.locator('[role="button"][tabindex="0"]')
-		.filter({ hasText: REPLIABLE });
+	page.locator(MESSAGE_ROW).filter({ hasText: REPLIABLE });
 
 const offsetX = (page: Page, slot: "base" | "sheet") =>
 	page
@@ -189,6 +196,86 @@ test.describe("the chat stack on a phone", () => {
 		await expect(dim(page)).toHaveCount(0);
 	});
 
+	test("the system back gesture dims the list and edges the conversation sliding off it", async ({
+		page,
+	}) => {
+		await openInbox(page);
+		await openConversation(page);
+
+		expect(await startSystemBack(page)).toBe(true);
+		await progressSystemBack(page, 0.25);
+		const left = await sheet(page).evaluate(
+			(pane) => pane.getBoundingClientRect().x,
+		);
+
+		expect(await scrimStrength(dim(page))).toBeCloseTo(
+			DARK_SCRIM * 0.75,
+			2,
+		);
+		await expectEdgeJustLeftOf(page, { x: left });
+		await cancelSystemBack(page);
+	});
+
+	test("neither the list nor a conversation shows an edge at rest in any blur mode", async ({
+		page,
+	}) => {
+		const leftColumn = { x: 0, y: 0, width: 2, height: PHONE.height };
+		await openInbox(page);
+		for (const mode of BLUR_MODES) {
+			await setBlurMode(page, mode);
+			expect(
+				await edgeLineColumns(page, { clip: leftColumn }),
+				`list, ${mode}`,
+			).toEqual([]);
+		}
+
+		await openConversation(page);
+		for (const mode of BLUR_MODES) {
+			await setBlurMode(page, mode);
+			expect(
+				await edgeLineColumns(page, { clip: leftColumn }),
+				`conversation, ${mode}`,
+			).toEqual([]);
+		}
+	});
+
+	test("a back gesture during the slide-in picks the conversation up where it is, lets the finger drive the rest and commits back to the list", async ({
+		page,
+	}) => {
+		await openInbox(page);
+
+		const pickUp = startSystemBackMidSlide(
+			page,
+			'[data-slot="live-stack-sheet"]',
+		);
+		await rows(page).nth(1).click();
+		const { started, before, pickedUp, aFrameLater } = await pickUp;
+
+		expect(started).toBe(true);
+		expect(pickedUp, "the sheet stays where it was").toBeCloseTo(
+			before,
+			-1,
+		);
+		expect(aFrameLater, "the sheet must not snap fully in").toBeGreaterThan(
+			0,
+		);
+		expect(aFrameLater).toBeLessThanOrEqual(before);
+		await expect(base(page)).toHaveCSS("visibility", "visible");
+
+		await progressSystemBack(page, 0.5);
+		expect(await offsetX(page, "sheet")).toBeGreaterThanOrEqual(
+			PHONE.width / 2 - 1,
+		);
+		await expect
+			.poll(() => offsetX(page, "sheet"))
+			.toBeCloseTo(PHONE.width / 2, 0);
+
+		expect(await commitSystemBack(page)).toBe(false);
+		await expect(page).toHaveURL(/\/chat$/);
+		await expect(sheet(page)).toHaveCount(0);
+		await expect(dim(page)).toHaveCount(0);
+	});
+
 	test("a back swipe started while the last one is still sliding out finishes that one first", async ({
 		page,
 	}) => {
@@ -249,10 +336,7 @@ test.describe("the chat stack on a phone", () => {
 	}) => {
 		await openInbox(page);
 		const href = await openConversation(page);
-		await page
-			.locator('[role="button"][tabindex="0"]')
-			.first()
-			.click({ button: "right" });
+		await page.locator(MESSAGE_ROW).first().click({ button: "right" });
 		const reply = page.getByRole("button", { name: "Reply" });
 		await expect(reply).toBeVisible();
 
@@ -295,6 +379,7 @@ test.describe("the chat stack on a phone", () => {
 		await progressSystemBack(page, 0.5);
 		expect(await offsetX(page, "sheet")).toBeCloseTo(PHONE.width * 0.5, -1);
 		expect(await offsetX(page, "base")).toBe(0);
+		expect(await scrimStrength(dim(page))).toBeCloseTo(DARK_SCRIM * 0.5, 2);
 		await cancelSystemBack(page);
 	});
 });

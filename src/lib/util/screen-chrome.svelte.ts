@@ -35,6 +35,7 @@ function edgeChrome(edge: Edge) {
 	const attach: Attachment<HTMLElement> = (element) => {
 		const remeasure = () => measure(element);
 		clearances.set(element, 0);
+		element.dataset.screenChrome = edge;
 		const movesWithItsScroller =
 			getComputedStyle(element).position === "sticky";
 		const observer = new ResizeObserver(remeasure);
@@ -54,12 +55,20 @@ function edgeChrome(edge: Edge) {
 			element.removeEventListener("outrostart", remeasure);
 			window.removeEventListener("scroll", remeasure, { capture: true });
 			clearances.delete(element);
+			delete element.dataset.screenChrome;
 		};
 	};
 
 	return {
 		attach,
 		clearance: () => Math.max(0, ...clearances.values()),
+		blurBarClearance: () =>
+			Math.max(
+				0,
+				...[...clearances]
+					.filter(([element]) => element.classList.contains("pblur"))
+					.map(([, clearance]) => clearance),
+			),
 		remeasure: () => {
 			for (const element of clearances.keys()) measure(element);
 		},
@@ -73,6 +82,8 @@ export const topChrome = top.attach;
 export const bottomChrome = bottom.attach;
 export const topChromeClearance = top.clearance;
 export const bottomChromeClearance = bottom.clearance;
+export const topBlurBarClearance = top.blurBarClearance;
+export const bottomBlurBarClearance = bottom.blurBarClearance;
 
 export function remeasureScreenChrome(): void {
 	top.remeasure();

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Attachment } from "svelte/attachments";
 
 import {
+	bottomBlurBarClearance,
 	bottomChrome,
 	bottomChromeClearance,
 	remeasureScreenChrome,
@@ -56,6 +57,18 @@ describe("screen chrome clearance", () => {
 		expect(bottomChromeClearance()).toBe(64);
 	});
 
+	it("reports progressive blur bars apart from the rest of the chrome", () => {
+		const navBar = bar({ top: 736, height: 64 });
+		navBar.classList.add("pblur");
+		detachAfterEach(bottomChrome(navBar));
+		detachAfterEach(bottomChrome(bar({ top: 600, height: 200 })));
+		remeasureScreenChrome();
+		flushSync();
+
+		expect(bottomChromeClearance()).toBe(200);
+		expect(bottomBlurBarClearance()).toBe(64);
+	});
+
 	it("keeps counting a bar in an inert pane that is still on screen", () => {
 		const pane = document.createElement("div");
 		pane.setAttribute("inert", "");
@@ -101,5 +114,23 @@ describe("screen chrome clearance", () => {
 		remeasureScreenChrome();
 		flushSync();
 		expect(topChromeClearance()).toBe(76);
+	});
+});
+
+describe("screen chrome marking", () => {
+	it("marks each bar with its edge while attached and unmarks it on detach", () => {
+		const topBar = bar({ top: 0, height: 76 });
+		const bottomBar = bar({ top: 736, height: 64 });
+		const detachTop = topChrome(topBar);
+		const detachBottom = bottomChrome(bottomBar);
+
+		expect(topBar.dataset.screenChrome).toBe("top");
+		expect(bottomBar.dataset.screenChrome).toBe("bottom");
+
+		if (detachTop) detachTop();
+		if (detachBottom) detachBottom();
+
+		expect(topBar.hasAttribute("data-screen-chrome")).toBe(false);
+		expect(bottomBar.hasAttribute("data-screen-chrome")).toBe(false);
 	});
 });
