@@ -286,6 +286,52 @@ class MainActivity : TauriActivity() {
 				}
 			}
 		}
+
+		@JavascriptInterface
+		fun saveBase64ToSubdir(base64Data: String, filename: String, subDir: String?, mimeType: String?): Boolean {
+			return try {
+				val safeSub = subDir?.trim()?.replace(Regex("[^a-zA-Z0-9_.-]"), "_")
+				val relativePath = if (!safeSub.isNullOrBlank()) {
+					"Open/$safeSub"
+				} else {
+					"Open"
+				}
+				val bytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT)
+				val isVideo = filename.endsWith(".mp4", ignoreCase = true) || mimeType?.startsWith("video/") == true
+				val contentType = mimeType?.takeIf { it.isNotBlank() } ?: if (isVideo) "video/mp4" else "image/jpeg"
+
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+					val values = android.content.ContentValues().apply {
+						put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, filename)
+						put(android.provider.MediaStore.MediaColumns.MIME_TYPE, contentType)
+						put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/$relativePath")
+					}
+					val resolver = contentResolver
+					val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+					if (uri != null) {
+						resolver.openOutputStream(uri)?.use { outputStream ->
+							outputStream.write(bytes)
+						}
+					}
+				} else {
+					val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+					val targetDir = java.io.File(downloadsDir, relativePath)
+					if (!targetDir.exists()) targetDir.mkdirs()
+					val file = java.io.File(targetDir, filename)
+					java.io.FileOutputStream(file).use { it.write(bytes) }
+					android.media.MediaScannerConnection.scanFile(
+						applicationContext,
+						arrayOf(file.absolutePath),
+						arrayOf(contentType),
+						null
+					)
+				}
+				true
+			} catch (e: Exception) {
+				e.printStackTrace()
+				false
+			}
+		}
 	}
 
 	private fun startBackgroundServiceInternal() {

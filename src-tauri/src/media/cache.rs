@@ -4,8 +4,8 @@ use grindr::Bytes;
 
 const MAX_ENTRY_BYTES: usize = super::MAX_MEDIA_BYTES;
 const LARGE_ENTRY_BYTES: usize = 128 * 1024;
-const SMALL_BUDGET_BYTES: usize = 32 * 1024 * 1024;
-const LARGE_BUDGET_BYTES: usize = 2 * MAX_ENTRY_BYTES;
+const SMALL_BUDGET_BYTES: usize = 64 * 1024 * 1024;
+const LARGE_BUDGET_BYTES: usize = 4 * MAX_ENTRY_BYTES;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Class {

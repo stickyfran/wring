@@ -48,6 +48,12 @@ declare global {
 				filename: string,
 				subDir?: string,
 			): void;
+			saveBase64ToSubdir?(
+				base64Data: string,
+				filename: string,
+				subDir?: string,
+				mimeType?: string,
+			): boolean;
 		};
 	}
 }

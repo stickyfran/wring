@@ -1,10 +1,14 @@
 <script lang="ts" module>
-	type LoadedImage = { url: string; size: MediaDimensions | null };
+	import { SvelteMap } from "svelte/reactivity";
+
+	import type { MediaDimensions } from "$lib/util/media-dimensions";
+
+	export type LoadedImage = { url: string; size: MediaDimensions | null };
 
 	const EXPIRING_IMAGE_CACHE_KEY = "open_cached_expiring_images_v1";
 
-	function loadExpiringImagesCache(): Map<string, LoadedImage> {
-		const map = new Map<string, LoadedImage>();
+	function loadExpiringImagesCache(): SvelteMap<string, LoadedImage> {
+		const map = new SvelteMap<string, LoadedImage>();
 		if (typeof window === "undefined" || !window.localStorage) return map;
 		try {
 			const raw = localStorage.getItem(EXPIRING_IMAGE_CACHE_KEY);
@@ -43,7 +47,7 @@
 		}
 	}
 
-	const expiringImageCache = loadExpiringImagesCache();
+	export const expiringImageCache = loadExpiringImagesCache();
 </script>
 
 <script lang="ts">
@@ -57,10 +61,7 @@
 		expiringImageMessageSchema,
 	} from "$lib/model/messaging/messages";
 	import { proxyMediaUrl } from "$lib/util/media";
-	import {
-		measureImage,
-		type MediaDimensions,
-	} from "$lib/util/media-dimensions";
+	import { measureImage } from "$lib/util/media-dimensions";
 	import {
 		applyPhotoSwipeDownloadButton,
 		openLightbox,
@@ -106,11 +107,7 @@
 		| { status: "expired" };
 
 	let imageState = $state<ImageState>({ status: "idle" });
-	let cachedImage = $state<LoadedImage | null>(null);
-
-	$effect(() => {
-		cachedImage = expiringImageCache.get(messageId) ?? null;
-	});
+	const cachedImage = $derived(expiringImageCache.get(messageId) ?? null);
 
 	const ownUrl = $derived(
 		isOut && message.url !== null ? proxyMediaUrl(message.url) : null,
@@ -130,9 +127,8 @@
 	});
 
 	function openImage() {
-		const cached = cachedImage ?? expiringImageCache.get(messageId);
+		const cached = cachedImage;
 		if (cached) {
-			cachedImage = cached;
 			imageState = { status: "open", image: cached };
 		} else {
 			imageState = { status: "loading" };
@@ -151,9 +147,8 @@
 		if (imageState.status !== "loading") return;
 		void (async () => {
 			try {
-				const cached = cachedImage ?? expiringImageCache.get(messageId);
+				const cached = cachedImage;
 				if (cached) {
-					cachedImage = cached;
 					imageState = { status: "open", image: cached };
 					return;
 				}
@@ -163,10 +158,10 @@
 					return;
 				}
 				const size = await measureImage(url).catch(() => null);
-				cachedImage = { url, size };
-				expiringImageCache.set(messageId, cachedImage);
+				const loadedImage = { url, size };
+				expiringImageCache.set(messageId, loadedImage);
 				saveExpiringImagesCache(expiringImageCache);
-				imageState = { status: "open", image: cachedImage };
+				imageState = { status: "open", image: loadedImage };
 			} catch (error) {
 				console.error(error);
 				showErrorToast({

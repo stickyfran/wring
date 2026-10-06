@@ -20,6 +20,7 @@
 	import { type MessageRefs, setMessageContext } from "./context";
 	import ExpiringImageMessage from "./ExpiringImageMessage.svelte";
 	import ImageMessage from "./ImageMessage.svelte";
+	import LocationMessage from "./LocationMessage.svelte";
 	import MessageContextMenu from "./MessageContextMenu.svelte";
 	import MessageDateGroup from "./MessageDateGroup.svelte";
 	import MessageTime from "./MessageTime.svelte";
@@ -28,7 +29,6 @@
 	import TextMessage from "./TextMessage.svelte";
 	import UnsentMessage from "./UnsentMessage.svelte";
 	import UnsupportedMessage from "./UnsupportedMessage.svelte";
-	import LocationMessage from "./LocationMessage.svelte";
 	import VideoMessage from "./VideoMessage.svelte";
 
 	let {
@@ -277,6 +277,7 @@
 				conversationId={message.conversationId}
 				messageId={message.messageId}
 				delivered={status !== "pending" && status !== "error"}
+				{isOut}
 			/>
 		{:else if message.type === "Unsent"}
 			<UnsentMessage />

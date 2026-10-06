@@ -2,11 +2,12 @@
 	import { ImagesIcon, LockSimpleIcon, VideoIcon } from "phosphor-svelte";
 
 	import { albumShares } from "$lib/chat/album-shares.svelte";
-	import AlbumPreview from "$lib/components/album/AlbumPreview.svelte";
 	import {
 		getCachedAlbumCover,
 		hasCachedAlbum,
+		loadAlbumSlides,
 	} from "$lib/components/album/album-lightbox";
+	import AlbumPreview from "$lib/components/album/AlbumPreview.svelte";
 	import type { AlbumMessage } from "$lib/model/messaging/messages";
 	import { getConversationState } from "../../conversation-state.svelte";
 	import LockedMedia from "./LockedMedia.svelte";
@@ -36,6 +37,12 @@
 	const coverUrl = $derived(
 		message.coverUrl ?? getCachedAlbumCover(message.albumId),
 	);
+
+	$effect(() => {
+		if (isViewable && !isCached) {
+			loadAlbumSlides(message.albumId).catch(() => {});
+		}
+	});
 
 	const className: import("svelte/elements").ClassValue = $derived([
 		"aspect-3/4 h-auto",

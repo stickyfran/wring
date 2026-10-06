@@ -54,7 +54,7 @@ function loadAlbumsCache(): Map<number, AlbumSlide[]> {
 	return map;
 }
 
-function saveAlbumsCache(map: Map<number, AlbumSlide[]>) {
+export function saveAlbumsCache(map: Map<number, AlbumSlide[]>) {
 	if (typeof window === "undefined" || !window.localStorage) return;
 	try {
 		const entries = Array.from(map.entries());
@@ -64,7 +64,7 @@ function saveAlbumsCache(map: Map<number, AlbumSlide[]>) {
 	}
 }
 
-const persistentAlbumCache = loadAlbumsCache();
+export const persistentAlbumCache = loadAlbumsCache();
 
 export function hasCachedAlbum(albumId: number): boolean {
 	return persistentAlbumCache.has(albumId) || slidesByAlbum.has(albumId);
@@ -85,7 +85,12 @@ export function getCachedAlbumCover(albumId: number): string | null {
 const slidesByAlbum = new Map<number, { slides: AlbumSlide[]; at: number }>();
 const forgetCountByAlbum = new Map<number, number>();
 
-registerAccountCache({ reset: () => slidesByAlbum.clear() });
+registerAccountCache({
+	reset: () => {
+		slidesByAlbum.clear();
+		persistentAlbumCache.clear();
+	},
+});
 
 function forgetCountOf(albumId: number): number {
 	return forgetCountByAlbum.get(albumId) ?? 0;
@@ -107,12 +112,27 @@ export async function loadAlbumSlides(albumId: number): Promise<AlbumSlide[]> {
 	try {
 		const album = await getAlbumContent(albumId);
 		const ready = album.content.filter((item) => !item.processing);
+		const persistentExisting = persistentAlbumCache.get(albumId) ?? [];
 		const slides = await Promise.all(
 			ready.map(async (slide) => {
 				const kind = isVideoContent(slide.contentType) ? "video" : "image";
-				const url = proxyMediaUrl(slide.url, { as: kind });
-				const cover = proxyMediaUrl(slide.coverUrl);
-				const coverUrl = hasNoPlaysLeft(slide)
+				const existing = persistentExisting.find(
+					(s) => s.contentId === slide.contentId,
+				);
+				let rawUrl = slide.url;
+				let rawCover = slide.coverUrl;
+				if ((!rawUrl || rawUrl === "") && existing?.url) {
+					rawUrl = existing.url;
+				}
+				if ((!rawCover || rawCover === "") && existing?.coverUrl) {
+					rawCover = existing.coverUrl;
+				}
+				const url = proxyMediaUrl(rawUrl, { as: kind });
+				const cover = proxyMediaUrl(rawCover);
+				const noPlays =
+					isVideoContent(slide.contentType) &&
+					(!rawUrl || rawUrl === "");
+				const coverUrl = noPlays
 					? (cover ?? proxyMediaUrl(slide.thumbUrl))
 					: cover;
 				const size =
