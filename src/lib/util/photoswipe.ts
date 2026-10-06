@@ -229,6 +229,11 @@ export function applyPhotoSwipeComponent<Slide>(
 		mounted.delete(element);
 		void unmount(component);
 	});
+
+	lightbox.on("destroy", () => {
+		for (const component of mounted.values()) void unmount(component);
+		mounted.clear();
+	});
 }
 
 export function applyPhotoSwipeVideo(

@@ -1,12 +1,19 @@
-import type { CDPSession, Locator, Page } from "@playwright/test";
+import type { CDPSession, Locator, Page, test } from "@playwright/test";
 
 export const DEMO_CONVERSATION_ID = "100001:123456000";
 export const DEMO_CONVERSATION = `/chat/${DEMO_CONVERSATION_ID}`;
 export const MESSAGE_ROW = '[role="article"]';
 // only an incoming row pads its end, and only incoming rows swipe rightward
 export const INCOMING_ROW = `${MESSAGE_ROW}.pe-3`;
+export const EXPIRING_IMAGE = '[data-slot="expiring-image-message"]';
+export const EXPIRED_IMAGE = '[data-slot="expiring-image-message-expired"]';
+export const EXPIRING_VIDEO = '[data-slot="video-message"]';
 export const DEMO_GEOHASH = "u33dc0cpgp00";
 export const FIRST_ROUTE_COMPILE_MS = 120_000;
+export const CLASSIC_SCROLLBARS: Parameters<typeof test.use>[0] = {
+	launchOptions: ({ launchOptions }, use) =>
+		use({ ...launchOptions, ignoreDefaultArgs: ["--hide-scrollbars"] }),
+};
 
 export const backLink = (page: Page) =>
 	page.getByRole("link", { name: "Back", exact: true });
@@ -27,11 +34,55 @@ export function afterTwoFrames(page: Page): Promise<void> {
 	);
 }
 
+export function animationsFinished(
+	layer: Locator,
+	{ subtree = false } = {},
+): Promise<unknown> {
+	return layer.evaluate(
+		(element, subtree) =>
+			Promise.all(
+				element
+					.getAnimations({ subtree })
+					.map(({ finished }) => finished),
+			),
+		subtree,
+	);
+}
+
 declare global {
 	interface Window {
 		__capturedInvokes?: Record<string, unknown[]>;
 		__emitTauriEvent?: (event: string, payload: unknown) => void;
+		__rendered?: Record<string, boolean>;
 	}
+}
+
+export async function watchRendered(
+	page: Page,
+	{ selector }: { selector: string },
+): Promise<() => Promise<boolean>> {
+	await page.evaluate((selector) => {
+		const rendered = (window.__rendered ??= {});
+		rendered[selector] = false;
+		new MutationObserver((records) => {
+			const added = records.flatMap((record) => [...record.addedNodes]);
+			if (
+				added.some(
+					(node) =>
+						node instanceof Element &&
+						(node.matches(selector) ||
+							node.querySelector(selector) !== null),
+				)
+			) {
+				rendered[selector] = true;
+			}
+		}).observe(document.body, { subtree: true, childList: true });
+	}, selector);
+	return () =>
+		page.evaluate(
+			(selector) => window.__rendered?.[selector] === true,
+			selector,
+		);
 }
 
 type TauriInternals = {
@@ -91,6 +142,58 @@ export function emitMessageSent(page: Page, payload: unknown): Promise<void> {
 	);
 }
 
+type MessageEnvelope = {
+	messageId: string;
+	conversationId: string;
+	senderId: number;
+	timestamp: number;
+};
+
+export function expiringImageMessage({
+	envelope,
+	spent = false,
+}: {
+	envelope: MessageEnvelope;
+	spent?: boolean;
+}) {
+	return {
+		type: "ExpiringImage",
+		body: {
+			mediaId: 910_900,
+			width: 600,
+			height: 800,
+			url: spent
+				? null
+				: "https://picsum.photos/seed/expiring-image/600/800",
+			duration: 10_000,
+			viewsRemaining: spent ? 0 : 1,
+			expiresAt: envelope.timestamp + 86_400_000,
+			viewed: spent,
+		},
+		...envelope,
+	};
+}
+
+export function expiringVideoMessage({
+	envelope,
+}: {
+	envelope: MessageEnvelope;
+}) {
+	return {
+		type: "Video",
+		body: {
+			mediaId: 900_001,
+			url: "https://cdns.grindr.com/videos/chat/clip.mp4",
+			contentType: "video/mp4",
+			length: 8000,
+			maxViews: 2,
+			viewsRemaining: 2,
+			looping: false,
+		},
+		...envelope,
+	};
+}
+
 export async function captureInvokes(page: Page, command: string) {
 	await page.evaluate((watched) => {
 		if (!window.__capturedInvokes) {
@@ -145,6 +248,15 @@ export async function ensureGridLocation(page: Page): Promise<void> {
 	await allFilters.waitFor({ timeout: 60_000 });
 }
 
+export async function openGrid(page: Page): Promise<void> {
+	await page.goto("/");
+	await page
+		.locator("nav a")
+		.first()
+		.waitFor({ timeout: FIRST_ROUTE_COMPILE_MS });
+	await ensureGridLocation(page);
+}
+
 export async function runPaletteCommand(
 	page: Page,
 	command: string,
@@ -162,7 +274,7 @@ export async function runPaletteCommand(
 }
 
 // The platform decides which wheel path the app takes: "macos" (the
-// default) runs the gesture-phase bridge, anything else the scroller rail.
+// default) runs the gesture-phase bridge.
 export async function installTauriShim(
 	page: Page,
 	{ platform = "macos" } = {},
@@ -308,6 +420,21 @@ export async function trackpadSwipe(
 		gestureSourceType: "mouse",
 	} as never);
 	await cdp.detach();
+}
+
+export function holdPagerAt(
+	pager: Locator,
+	{ progress }: { progress: number },
+): Promise<void> {
+	return pager.evaluate((node, heldAt) => {
+		window.dispatchEvent(
+			new TouchEvent("touchstart", {
+				touches: [new Touch({ identifier: 0, target: node })],
+			}),
+		);
+		node.style.scrollSnapType = "none";
+		node.scrollLeft = Math.round(node.clientWidth * heldAt);
+	}, progress);
 }
 
 export async function wheel(

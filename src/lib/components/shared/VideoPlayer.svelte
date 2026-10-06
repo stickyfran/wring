@@ -14,7 +14,7 @@
 	import { now } from "$lib/util/clock";
 	import { downloadMediaUrl } from "$lib/util/download";
 	import { formatMediaDuration } from "$lib/util/format-time";
-	import { firstFrameSrc } from "$lib/util/media";
+	import { firstFrameSrc, releaseVideoOnDestroy } from "$lib/util/media";
 	import VideoScrubber from "./VideoScrubber.svelte";
 
 	let {
@@ -137,6 +137,7 @@
 	<!-- svelte-ignore a11y_media_has_caption -->
 	<video
 		bind:this={element}
+		{@attach releaseVideoOnDestroy}
 		onpointerdown={toggle}
 		bind:paused
 		bind:muted
@@ -148,6 +149,7 @@
 		{loop}
 		playsinline
 		preload="metadata"
+		data-slot="video-player-media"
 		class="size-full object-contain"
 		onloadeddata={loaded}
 		onseeked={seeked}

@@ -22,9 +22,13 @@
 
 	let {
 		covered = false,
+		filtersLocked = false,
 		class: className,
-	}: { covered?: boolean; class?: import("svelte/elements").ClassValue } =
-		$props();
+	}: {
+		covered?: boolean;
+		filtersLocked?: boolean;
+		class?: import("svelte/elements").ClassValue;
+	} = $props();
 
 	const EAGER_COUNT = 10;
 
@@ -180,6 +184,14 @@
 
 <div class="flex h-full w-full min-w-list-rail flex-col">
 	<div class="relative flex min-h-0 flex-1 flex-col">
+		{#if !conversations.loading && (conversations.entries.length > 0 || !conversations.error)}
+			<DataRefreshControl
+				container={covered ? null : container}
+				updating={conversations.refreshing}
+				position="top"
+				onrefresh={() => void conversations.refresh()}
+			/>
+		{/if}
 		<div
 			bind:this={container}
 			data-slot="conversations-scroller"
@@ -208,7 +220,7 @@
 				</div>
 			{:else}
 				<div
-					class="flex min-h-overscrollable shrink-0 flex-col gap-1 pb-nav-clear"
+					class="min-h-overscrollable flex shrink-0 flex-col gap-1 pb-nav-clear"
 				>
 					{#each tabEntries as conversation, i (conversation.data.conversationId)}
 						{@const conversationId =
@@ -235,20 +247,13 @@
 				</div>
 			{/if}
 		</div>
-		{#if !conversations.loading && (conversations.entries.length > 0 || !conversations.error)}
-			<DataRefreshControl
-				{container}
-				updating={conversations.refreshing}
-				position="top"
-				onrefresh={() => void conversations.refresh()}
-			/>
-		{/if}
 		<ScrollToTopButton {container} class="bottom-(--nav-clear)" />
 		{#if activeTab === "inbox"}
 			<ConversationsFilters
 				filters={conversations.filters}
 				onchange={(values) => conversations.setFilters(values)}
 				inert={selecting}
+				locked={filtersLocked}
 			/>
 		{/if}
 	</div>

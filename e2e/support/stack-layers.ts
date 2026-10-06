@@ -3,6 +3,12 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { afterTwoFrames } from "./app";
 
 export const DARK_SCRIM = 0.8;
+export const PHONE = { width: 390, height: 844 };
+export const LIVE_STACK = {
+	base: '[data-slot="live-stack-base"]',
+	sheet: '[data-slot="live-stack-sheet"]',
+	dim: '[data-slot="live-stack-dim"]',
+};
 const NO_EDGE = "0 0 #0000";
 const VISIBLE_STEP = 8;
 
@@ -109,6 +115,20 @@ export function pauseMidSlide(page: Page, { pane }: { pane: string }) {
 		while (offset() < innerWidth * 0.2) await nextFrame();
 		for (const animation of document.getAnimations()) animation.pause();
 		return offset();
+	}, pane);
+}
+
+export function pauseOnceSliding(page: Page, { pane }: { pane: string }) {
+	return page.evaluate(async (selector) => {
+		const nextFrame = () => new Promise(requestAnimationFrame);
+		const sliding = () =>
+			document
+				.querySelector(selector)
+				?.getAnimations()
+				.some((animation) => animation.playState === "running");
+		while (!sliding()) await nextFrame();
+		for (const animation of document.getAnimations()) animation.pause();
+		return document.querySelector(selector)?.getBoundingClientRect().x ?? 0;
 	}, pane);
 }
 

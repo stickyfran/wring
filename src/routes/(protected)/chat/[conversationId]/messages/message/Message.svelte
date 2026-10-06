@@ -218,7 +218,9 @@
 	// tell a double tap (react) from a double click (reply).
 	let lastPointerType = "";
 
-	const railWheel = wheelInputMode() === "rail";
+	const wheelMode = wheelInputMode();
+	const railWheel = wheelMode === "rail";
+	const touchOnly = wheelMode === "none";
 </script>
 
 {#snippet adornments()}
@@ -322,6 +324,7 @@
 				{
 					"[scrollbar-width:none] overflow-x-auto overscroll-x-none":
 						railWheel,
+					"overflow-x-clip": touchOnly,
 				},
 			]}
 		>

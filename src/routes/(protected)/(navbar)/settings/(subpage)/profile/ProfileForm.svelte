@@ -28,11 +28,13 @@
 	import type { ProfileTagsResponse } from "$lib/model/users/tags";
 	import ComboField from "./fields/ComboField.svelte";
 	import DateField from "./fields/DateField.svelte";
+	import FieldPair from "./fields/FieldPair.svelte";
+	import HeightField from "./fields/HeightField.svelte";
 	import MultiSelectField from "./fields/MultiSelectField.svelte";
-	import NumberField from "./fields/NumberField.svelte";
 	import SelectField from "./fields/SelectField.svelte";
 	import SocialField from "./fields/SocialField.svelte";
 	import SwitchRow from "./fields/SwitchRow.svelte";
+	import WeightField from "./fields/WeightField.svelte";
 	import {
 		ageRange,
 		bodyTypeOptions,
@@ -42,7 +44,6 @@
 		ethnicityOptions,
 		fieldLimits,
 		healthOptions,
-		heightCmRange,
 		hivOptions,
 		lookingForOptions,
 		maxProfileGenders,
@@ -54,9 +55,9 @@
 		relationshipOptions,
 		tribeOptions,
 		vaccineOptions,
-		weightKgRange,
 	} from "./options";
 	import { saveProfilePhotoOrder } from "./profile-photo-order";
+	import ProfileFormSection from "./ProfileFormSection.svelte";
 	import ProfilePicturesUpload from "./ProfilePicturesUpload.svelte";
 
 	let {
@@ -214,33 +215,63 @@
 </script>
 
 <form
+	data-slot="profile-form"
 	class="flex grow flex-col gap-6"
 	onsubmit={(event) => event.preventDefault()}
 >
 	<fieldset disabled={saving} class="contents">
-		<section class="flex flex-col gap-3">
-			<h2>Photos</h2>
+		<ProfileFormSection title="Photos">
 			<ProfilePicturesUpload
 				bind:medias={form.medias}
 				bind:removed={form.removedPhotos}
 				{ourProfileId}
 				disabled={saving}
 			/>
-		</section>
+		</ProfileFormSection>
 
-		<section class="flex flex-col gap-3">
+		<ProfileFormSection title="Basics">
 			<TextField
 				label="Display name"
 				bind:value={form.displayName}
 				maxLength={fieldLimits.displayName}
 				placeholder="Everyone will see this on the grid..."
 			/>
-			<MultilineField
-				label="About me"
-				bind:value={form.aboutMe}
-				maxLength={fieldLimits.aboutMe}
-				placeholder="Tell people who you are and what you're looking for (not what you're not looking for)"
+			<FieldPair>
+				<Field label="Age">
+					{#snippet picker({ labelId })}
+						<WheelPicker
+							bind:value={form.age}
+							min={ageRange.min}
+							max={ageRange.max}
+							unit="years"
+							disabled={saving}
+							aria-labelledby={labelId}
+						/>
+					{/snippet}
+				</Field>
+				<SwitchRow label="Show my age" bind:checked={form.showAge} />
+			</FieldPair>
+			<FieldPair>
+				<SelectField
+					label="Position"
+					bind:value={form.sexualPosition}
+					options={positionOptions}
+				/>
+				<SwitchRow
+					label="Show my position"
+					bind:checked={form.showPosition}
+				/>
+			</FieldPair>
+			<HeightField bind:value={form.height} />
+			<WeightField bind:value={form.weightKg} />
+			<SelectField
+				label="Body type"
+				bind:value={form.bodyType}
+				options={bodyTypeOptions}
 			/>
+		</ProfileFormSection>
+
+		<ProfileFormSection title="About">
 			<ComboField
 				label="Tags"
 				bind:values={form.profileTags}
@@ -249,10 +280,15 @@
 				max={maxProfileTags}
 				searchPlaceholder="Search tags..."
 			/>
-		</section>
+			<MultilineField
+				label="About me"
+				bind:value={form.aboutMe}
+				maxLength={fieldLimits.aboutMe}
+				placeholder="Tell people who you are and what you're looking for (not what you're not looking for)"
+			/>
+		</ProfileFormSection>
 
-		<section class="flex flex-col gap-3">
-			<h2>Identity</h2>
+		<ProfileFormSection title="Stats">
 			<ComboField
 				label="Gender"
 				bind:values={form.genderIds}
@@ -270,54 +306,17 @@
 				max={maxProfilePronouns}
 				searchPlaceholder="Search pronouns..."
 			/>
-		</section>
-
-		<section class="flex flex-col gap-3">
-			<h2>Stats</h2>
-			<Field label="Age">
-				{#snippet picker({ labelId })}
-					<WheelPicker
-						bind:value={form.age}
-						min={ageRange.min}
-						max={ageRange.max}
-						unit="years"
-						disabled={saving}
-						aria-labelledby={labelId}
-					/>
-				{/snippet}
-			</Field>
-			<SwitchRow label="Show my age" bind:checked={form.showAge} />
-			<SelectField
-				label="Position"
-				bind:value={form.sexualPosition}
-				options={positionOptions}
-			/>
-			<SwitchRow
-				label="Show my position"
-				bind:checked={form.showPosition}
-			/>
-			<NumberField
-				label="Height"
-				bind:value={form.height}
-				min={heightCmRange.min}
-				max={heightCmRange.max}
-				unit="cm"
-				placeholder="—"
-			/>
-			<NumberField
-				label="Weight"
-				bind:value={form.weightKg}
-				min={weightKgRange.min}
-				max={weightKgRange.max}
-				step={0.5}
-				unit="kg"
-				placeholder="—"
-			/>
-			<SelectField
-				label="Body type"
-				bind:value={form.bodyType}
-				options={bodyTypeOptions}
-			/>
+			<FieldPair>
+				<MultiSelectField
+					label="My tribes"
+					bind:values={form.grindrTribes}
+					options={tribeOptions}
+				/>
+				<SwitchRow
+					label="Show my tribes"
+					bind:checked={form.showTribes}
+				/>
+			</FieldPair>
 			<SelectField
 				label="Ethnicity"
 				bind:value={form.ethnicity}
@@ -328,21 +327,9 @@
 				bind:value={form.relationshipStatus}
 				options={relationshipOptions}
 			/>
-		</section>
+		</ProfileFormSection>
 
-		<section class="flex flex-col gap-3">
-			<h2>Preferences</h2>
-			<SwitchRow label="Show my tribes" bind:checked={form.showTribes} />
-			<MultiSelectField
-				label="My tribes"
-				bind:values={form.grindrTribes}
-				options={tribeOptions}
-			/>
-			<MultiSelectField
-				label="Tribes I'm into"
-				bind:values={form.tribesImInto}
-				options={tribeOptions}
-			/>
+		<ProfileFormSection title="Expectations">
 			<MultiSelectField
 				label="Looking for"
 				bind:values={form.lookingFor}
@@ -358,10 +345,14 @@
 				bind:value={form.nsfw}
 				options={nsfwOptions}
 			/>
-		</section>
+			<MultiSelectField
+				label="Tribes I'm into"
+				bind:values={form.tribesImInto}
+				options={tribeOptions}
+			/>
+		</ProfileFormSection>
 
-		<section class="flex flex-col gap-3">
-			<h2>Health</h2>
+		<ProfileFormSection title="Health">
 			<SelectField
 				label="HIV status"
 				bind:value={form.hivStatus}
@@ -378,10 +369,9 @@
 				bind:values={form.vaccineIds}
 				options={vaccineOptions}
 			/>
-		</section>
+		</ProfileFormSection>
 
-		<section class="flex flex-col gap-3">
-			<h2>Social</h2>
+		<ProfileFormSection title="Socials">
 			<SocialField
 				label="Instagram"
 				bind:value={form.instagram}
@@ -393,7 +383,7 @@
 				bind:value={form.facebook}
 				icon={FacebookLogoIcon}
 			/>
-		</section>
+		</ProfileFormSection>
 	</fieldset>
 
 	{#if dirty}
@@ -405,11 +395,3 @@
 		/>
 	{/if}
 </form>
-
-<style lang="postcss">
-	@reference "$layout";
-
-	h2 {
-		@apply truncate ps-1 text-xl font-semibold tracking-tight;
-	}
-</style>

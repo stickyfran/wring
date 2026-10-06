@@ -145,7 +145,7 @@ describe("GoogleSignInForm", () => {
 		expect(screen.queryByLabelText("Token")).toBeNull();
 	});
 
-	it("says the app bypasses F-Droid's checks on an F-Droid install", async () => {
+	it("says the add-on bypasses F-Droid's checks on an F-Droid install", async () => {
 		getUpdateCapability.mockResolvedValue(installedBy("org.fdroid.fdroid"));
 		const { screen } = await opened();
 

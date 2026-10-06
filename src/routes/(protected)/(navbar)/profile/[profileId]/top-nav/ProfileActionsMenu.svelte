@@ -17,34 +17,38 @@
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
 	import type { Profile } from "$lib/model/users/profiles";
 	import { exportProfileData } from "$lib/util/profile-exporter";
+	import {
+		applyViewabilityChange,
+		type PendingViewabilityChange,
+	} from "../profile-state.svelte";
 
 	let {
 		profileId,
 		profile,
 		blockable = true,
-		onBlocked,
-		onHidden,
+		changingViewability,
+		markBlocked,
+		markHidden,
 	}: {
 		profileId: number;
 		profile?: Profile;
 		blockable?: boolean;
-		onBlocked: () => void;
-		onHidden: () => void;
+		changingViewability: boolean;
+		markBlocked: () => PendingViewabilityChange;
+		markHidden: () => PendingViewabilityChange;
 	} = $props();
 
-	let submitting = $state(false);
 	let reportOpen = $state(false);
 </script>
 
 <DropdownMenu.Root>
-	<DropdownMenu.Trigger>
+	<DropdownMenu.Trigger disabled={changingViewability}>
 		{#snippet child({ props: { class: className, ...props } })}
 			<Button
 				size="icon-lg"
 				variant="secondary"
 				aria-label="Profile menu"
 				class={[className, "size-12"]}
-				disabled={submitting}
 				{...props}
 			>
 				<DotsThreeIcon class="size-8" />
@@ -87,33 +91,24 @@
 			Report profile
 		</DropdownMenu.Item>
 		<DropdownMenu.Item
-			onSelect={async () => {
-				try {
-					await hideUser({ profileId });
-					onHidden();
-				} catch (error) {
-					console.error(error);
-					showErrorToast({ label: "Failed to hide user", error });
-				}
-			}}
+			onSelect={() =>
+				applyViewabilityChange({
+					change: markHidden,
+					request: () => hideUser({ profileId }),
+					failureLabel: "Failed to hide user",
+				})}
 		>
 			<EyeSlashIcon class="size-5" />
 			Hide profile
 		</DropdownMenu.Item>
 		{#if blockable}
 			<DropdownMenu.Item
-				onSelect={async () => {
-					try {
-						await blockUser({ profileId });
-						onBlocked();
-					} catch (error) {
-						console.error(error);
-						showErrorToast({
-							label: "Failed to block user",
-							error,
-						});
-					}
-				}}
+				onSelect={() =>
+					applyViewabilityChange({
+						change: markBlocked,
+						request: () => blockUser({ profileId }),
+						failureLabel: "Failed to block user",
+					})}
 			>
 				<ProhibitIcon class="size-5" />
 				Block profile
@@ -122,4 +117,9 @@
 	</DropdownMenu.Content>
 </DropdownMenu.Root>
 
-<ReportSheet bind:open={reportOpen} {profileId} {blockable} {onBlocked} />
+<ReportSheet
+	bind:open={reportOpen}
+	{profileId}
+	{blockable}
+	onBlocked={() => markBlocked().settle()}
+/>

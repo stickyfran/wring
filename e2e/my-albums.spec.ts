@@ -9,14 +9,8 @@ import {
 	openSharedAlbum,
 	SHARED_ALBUM,
 } from "./support/albums";
-import { installTauriShim } from "./support/app";
+import { installTauriShim, watchRendered } from "./support/app";
 import { CHAT_MEDIA_HOST, serveImages } from "./support/media";
-
-declare global {
-	interface Window {
-		__rendered?: Record<string, boolean>;
-	}
-}
 
 const ADD_ALBUM = 'a[href="/settings/albums/new"]';
 const LOADING_TILE = '[data-slot="media-image-pending"]';
@@ -38,34 +32,6 @@ async function createAlbum(page: Page, name: string): Promise<void> {
 	});
 	await expect(page).toHaveURL(/\/albums\/\d+$/, { timeout: 30_000 });
 	await expect(page.locator(MEDIA_SLOT)).toHaveCount(1, { timeout: 30_000 });
-}
-
-async function watchRendered(
-	page: Page,
-	selector: string,
-): Promise<() => Promise<boolean>> {
-	await page.evaluate((selector) => {
-		const rendered = (window.__rendered ??= {});
-		rendered[selector] = false;
-		new MutationObserver((records) => {
-			const added = records.flatMap((record) => [...record.addedNodes]);
-			if (
-				added.some(
-					(node) =>
-						node instanceof Element &&
-						(node.matches(selector) ||
-							node.querySelector(selector) !== null),
-				)
-			) {
-				rendered[selector] = true;
-			}
-		}).observe(document.body, { subtree: true, childList: true });
-	}, selector);
-	return () =>
-		page.evaluate(
-			(selector) => window.__rendered?.[selector] === true,
-			selector,
-		);
 }
 
 test.describe("my albums", () => {
@@ -112,11 +78,13 @@ test.describe("my albums", () => {
 		).toHaveCount(0);
 	});
 
-	test("Back slides the album off My Albums as it was, not a loading grid", async ({
+	test("Back returns to My Albums as it was, not a loading grid", async ({
 		page,
 	}) => {
 		await openSharedAlbum(page);
-		const loadingShown = await watchRendered(page, LOADING_TILE);
+		const loadingShown = await watchRendered(page, {
+			selector: LOADING_TILE,
+		});
 
 		await back(page);
 		await expect(page).toHaveURL(/\/albums$/);
@@ -276,7 +244,9 @@ test.describe("my albums", () => {
 		).toBeVisible();
 
 		await createAlbum(page, "Rooftop");
-		const addAlbumRendered = await watchRendered(page, ADD_ALBUM);
+		const addAlbumRendered = await watchRendered(page, {
+			selector: ADD_ALBUM,
+		});
 		await back(page);
 
 		await expect(page.locator(albumTileNamed("Rooftop"))).toBeVisible({
