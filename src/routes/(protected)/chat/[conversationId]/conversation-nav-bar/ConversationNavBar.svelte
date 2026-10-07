@@ -4,8 +4,8 @@
 	import { getConversations } from "$lib/chat/conversations-context.svelte";
 	import { isVideoContent } from "$lib/components/album/album";
 	import {
+		getPersistentAlbumSlides,
 		loadAlbumSlides,
-		persistentAlbumCache,
 	} from "$lib/components/album/album-lightbox";
 	import BackLink from "$lib/components/navigation/BackLink.svelte";
 	import ProgressiveBlur from "$lib/components/shared/ProgressiveBlur.svelte";
@@ -83,7 +83,7 @@
 				try {
 					const slides =
 						(await loadAlbumSlides(albumId).catch(
-							() => persistentAlbumCache.get(albumId) ?? [],
+							() => getPersistentAlbumSlides(albumId),
 						)) ?? [];
 					for (let i = 0; i < slides.length; i++) {
 						const slide = slides[i];

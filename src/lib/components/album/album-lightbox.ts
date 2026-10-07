@@ -43,7 +43,20 @@ function loadAlbumsCache(): Map<number, AlbumSlide[]> {
 			if (Array.isArray(parsed)) {
 				for (const item of parsed) {
 					if (Array.isArray(item) && item.length === 2) {
-						map.set(Number(item[0]), item[1] as AlbumSlide[]);
+						const albumId = Number(item[0]);
+						const value = item[1];
+						if (Array.isArray(value)) {
+							map.set(albumId, value as AlbumSlide[]);
+						} else if (
+							value &&
+							typeof value === "object" &&
+							Array.isArray((value as { slides?: AlbumSlide[] }).slides)
+						) {
+							map.set(
+								albumId,
+								(value as { slides: AlbumSlide[] }).slides,
+							);
+						}
 					}
 				}
 			}
@@ -57,7 +70,9 @@ function loadAlbumsCache(): Map<number, AlbumSlide[]> {
 export function saveAlbumsCache(map: Map<number, AlbumSlide[]>) {
 	if (typeof window === "undefined" || !window.localStorage) return;
 	try {
-		const entries = Array.from(map.entries());
+		const entries = Array.from(map.entries()).filter(([, slides]) =>
+			Array.isArray(slides),
+		);
 		localStorage.setItem(ALBUM_CACHE_KEY, JSON.stringify(entries));
 	} catch (e) {
 		console.warn("Failed to save album cache to localStorage:", e);
@@ -66,14 +81,36 @@ export function saveAlbumsCache(map: Map<number, AlbumSlide[]>) {
 
 export const persistentAlbumCache = loadAlbumsCache();
 
+export function getPersistentAlbumSlides(albumId: number): AlbumSlide[] {
+	const cached = persistentAlbumCache.get(albumId);
+	if (Array.isArray(cached)) {
+		return cached;
+	}
+	if (
+		cached &&
+		typeof cached === "object" &&
+		Array.isArray((cached as { slides?: AlbumSlide[] }).slides)
+	) {
+		const slides = (cached as { slides: AlbumSlide[] }).slides;
+		persistentAlbumCache.set(albumId, slides);
+		return slides;
+	}
+	return [];
+}
+
 export function hasCachedAlbum(albumId: number): boolean {
-	return persistentAlbumCache.has(albumId) || slidesByAlbum.has(albumId);
+	return (
+		slidesByAlbum.has(albumId) ||
+		getPersistentAlbumSlides(albumId).length > 0
+	);
 }
 
 export function getCachedAlbumCover(albumId: number): string | null {
-	const slides =
-		slidesByAlbum.get(albumId)?.slides ?? persistentAlbumCache.get(albumId);
-	if (slides && slides.length > 0) {
+	const memory = slidesByAlbum.get(albumId)?.slides;
+	const slides = Array.isArray(memory)
+		? memory
+		: getPersistentAlbumSlides(albumId);
+	if (slides.length > 0) {
 		const first = slides[0];
 		if (first) {
 			return first.coverUrl || first.url;
@@ -112,7 +149,7 @@ export async function loadAlbumSlides(albumId: number): Promise<AlbumSlide[]> {
 	try {
 		const album = await getAlbumContent(albumId);
 		const ready = album.content.filter((item) => !item.processing);
-		const persistentExisting = persistentAlbumCache.get(albumId) ?? [];
+		const persistentExisting = getPersistentAlbumSlides(albumId);
 		const slides = await Promise.all(
 			ready.map(async (slide) => {
 				const kind = isVideoContent(slide.contentType) ? "video" : "image";
@@ -155,8 +192,8 @@ export async function loadAlbumSlides(albumId: number): Promise<AlbumSlide[]> {
 		}
 		return slides;
 	} catch (error) {
-		const persistent = persistentAlbumCache.get(albumId);
-		if (persistent && persistent.length > 0) {
+		const persistent = getPersistentAlbumSlides(albumId);
+		if (persistent.length > 0) {
 			return persistent;
 		}
 		throw error;
