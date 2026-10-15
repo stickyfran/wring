@@ -410,7 +410,6 @@ class MainActivity : TauriActivity() {
 	
 	override fun onCreate(savedInstanceState: Bundle?) {
 		enableEdgeToEdge()
-		Keyring.initializeNdkContext(applicationContext)
 		createNotificationChannel()
 		startBackgroundServiceInternal()
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
