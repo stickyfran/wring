@@ -8,7 +8,11 @@
 	import PushPinIcon from "phosphor-svelte/lib/PushPinIcon";
 	import { untrack } from "svelte";
 
-	import { getProfile, getProfileSync } from "$lib/api/users/profiles";
+	import {
+		getProfile,
+		getProfileSync,
+		onProfileEdit,
+	} from "$lib/api/users/profiles";
 	import { getOrCreateConversationsState } from "$lib/chat/conversations-context.svelte";
 	import BrokenUserAvatar from "$lib/components/profile/BrokenUserAvatar.svelte";
 	import UserAvatar from "$lib/components/profile/UserAvatar.svelte";
@@ -23,19 +27,22 @@
 
 	let { ourProfileId }: { ourProfileId: number } = $props();
 
-	let fetchedMediaHash = $state<string | null>(null);
 	const syncHash = $derived(
 		getProfileSync(ourProfileId)?.medias?.[0]?.mediaHash ?? null,
 	);
-	const cachedMediaHash = $derived(fetchedMediaHash ?? syncHash);
 
-	const myProfilePhotos = untrack(() =>
-		getProfile(ourProfileId)
-			.then((profile) => {
-				fetchedMediaHash = profile.medias?.[0]?.mediaHash ?? null;
-				return profile.medias;
-			})
-			.catch(() => []),
+	let myProfilePhotos = $state(
+		untrack(() =>
+			getProfile(ourProfileId).then((profile) => profile.medias),
+		),
+	);
+
+	$effect(() =>
+		onProfileEdit(({ profileId, patch }) => {
+			if (profileId !== ourProfileId || patch.medias === undefined)
+				return;
+			myProfilePhotos = Promise.resolve(patch.medias);
+		}),
 	);
 
 	const conversations = untrack(() =>
@@ -173,31 +180,23 @@
 			},
 		]}
 	>
-		{#if cachedMediaHash !== null}
+		{#await myProfilePhotos}
 			<UserAvatar
-				mediaHash={cachedMediaHash}
+				mediaHash={syncHash}
 				class="size-full *:rounded-full"
 				size="lg"
 			/>
-		{:else}
-			{#await myProfilePhotos}
-				<UserAvatar
-					mediaHash={null}
-					class="size-full *:rounded-full"
-					size="lg"
-				/>
-			{:then photos}
-				{@const mainPhoto = photos[0] as
-					{ mediaHash: string } | undefined}
-				<UserAvatar
-					mediaHash={mainPhoto?.mediaHash ?? null}
-					class="size-full *:rounded-full"
-					size="lg"
-				/>
-			{:catch}
-				<BrokenUserAvatar />
-			{/await}
-		{/if}
+		{:then photos}
+			{@const mainPhoto = photos[0] as
+				{ mediaHash: string } | undefined}
+			<UserAvatar
+				mediaHash={mainPhoto?.mediaHash ?? null}
+				class="size-full *:rounded-full"
+				size="lg"
+			/>
+		{:catch}
+			<BrokenUserAvatar />
+		{/await}
 	</a>
 </ProgressiveBlur>
 

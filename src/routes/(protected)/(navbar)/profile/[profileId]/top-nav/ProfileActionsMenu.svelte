@@ -1,17 +1,16 @@
 <script lang="ts">
-	import {
-		CopyIcon,
-		DotsThreeIcon,
-		DownloadSimpleIcon,
-		EyeSlashIcon,
-		FlagIcon,
-		ProhibitIcon,
-	} from "phosphor-svelte";
+	import CopyIcon from "phosphor-svelte/lib/CopyIcon";
+	import DotsThreeIcon from "phosphor-svelte/lib/DotsThreeIcon";
+	import DownloadSimpleIcon from "phosphor-svelte/lib/DownloadSimpleIcon";
+	import EyeSlashIcon from "phosphor-svelte/lib/EyeSlashIcon";
+	import FlagIcon from "phosphor-svelte/lib/FlagIcon";
+	import ProhibitIcon from "phosphor-svelte/lib/ProhibitIcon";
 	import { toast } from "svelte-sonner";
 
 	import { blockUser } from "$lib/api/browse/blocks";
 	import { hideUser } from "$lib/api/browse/hides";
 	import { showErrorToast } from "$lib/api/error-toast";
+	import { showBlockFailure } from "$lib/components/report/block-failure";
 	import ReportSheet from "$lib/components/report/ReportSheet.svelte";
 	import { Button } from "$lib/components/ui/button";
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
@@ -25,20 +24,26 @@
 	let {
 		profileId,
 		profile,
-		blockable = true,
 		changingViewability,
 		markBlocked,
 		markHidden,
 	}: {
 		profileId: number;
 		profile?: Profile;
-		blockable?: boolean;
 		changingViewability: boolean;
 		markBlocked: () => PendingViewabilityChange;
 		markHidden: () => PendingViewabilityChange;
 	} = $props();
 
 	let reportOpen = $state(false);
+
+	function block() {
+		void applyViewabilityChange({
+			change: markBlocked,
+			request: () => blockUser({ profileId }),
+			showFailure: showBlockFailure,
+		});
+	}
 </script>
 
 <DropdownMenu.Root>
@@ -101,25 +106,11 @@
 			<EyeSlashIcon class="size-5" />
 			Hide profile
 		</DropdownMenu.Item>
-		{#if blockable}
-			<DropdownMenu.Item
-				onSelect={() =>
-					applyViewabilityChange({
-						change: markBlocked,
-						request: () => blockUser({ profileId }),
-						failureLabel: "Failed to block user",
-					})}
-			>
-				<ProhibitIcon class="size-5" />
-				Block profile
-			</DropdownMenu.Item>
-		{/if}
+		<DropdownMenu.Item onSelect={block}>
+			<ProhibitIcon class="size-5" />
+			Block profile
+		</DropdownMenu.Item>
 	</DropdownMenu.Content>
 </DropdownMenu.Root>
 
-<ReportSheet
-	bind:open={reportOpen}
-	{profileId}
-	{blockable}
-	onBlocked={() => markBlocked().settle()}
-/>
+<ReportSheet bind:open={reportOpen} {profileId} onBlock={block} />

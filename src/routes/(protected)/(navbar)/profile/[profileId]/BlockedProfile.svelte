@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ProhibitIcon } from "phosphor-svelte";
+	import ProhibitIcon from "phosphor-svelte/lib/ProhibitIcon";
 
 	import { unblockUser } from "$lib/api/browse/blocks";
 	import { Button } from "$lib/components/ui/button";
@@ -13,12 +13,10 @@
 	let {
 		profileId,
 		blockedByUs,
-		changingViewability,
 		markViewable,
 	}: {
 		profileId: number;
 		blockedByUs: boolean;
-		changingViewability: boolean;
 		markViewable: () => PendingViewabilityChange;
 	} = $props();
 </script>
@@ -39,7 +37,6 @@
 			{#if blockedByUs}
 				<Button
 					variant="secondary"
-					disabled={changingViewability}
 					onclick={() =>
 						applyViewabilityChange({
 							change: markViewable,

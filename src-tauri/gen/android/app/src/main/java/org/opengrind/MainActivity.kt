@@ -28,7 +28,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import io.crates.keyring.Keyring
 import org.opengrind.push.AppForeground
 import org.opengrind.push.PushNotifier
 

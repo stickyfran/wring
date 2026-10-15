@@ -13,6 +13,7 @@ import {
 	ProfileUnavailableError,
 	refreshProfile,
 } from "$lib/api/users/profiles";
+import { Generation } from "$lib/util/generation";
 import type { TapType } from "$lib/model/interest/taps";
 import type { FavoriteNote } from "$lib/model/users/favorites";
 import type { Profile } from "$lib/model/users/profiles";
@@ -24,23 +25,25 @@ export type PendingViewabilityChange = {
 	settle: () => void;
 };
 
-export async function applyViewabilityChange({
-	change,
-	request,
-	failureLabel,
-}: {
-	change: () => PendingViewabilityChange;
-	request: () => Promise<unknown>;
-	failureLabel: string;
-}): Promise<void> {
-	const { revert, settle } = change();
+type ViewabilityFailureNotice =
+	| { failureLabel: string }
+	| { showFailure: (error: unknown) => void };
+
+export async function applyViewabilityChange(
+	options: {
+		change: () => PendingViewabilityChange;
+		request: () => Promise<unknown>;
+	} & ViewabilityFailureNotice,
+): Promise<void> {
+	const { revert, settle } = options.change();
 	try {
-		await request();
+		await options.request();
 		settle();
 	} catch (error) {
 		revert();
 		console.error(error);
-		showErrorToast({ label: failureLabel, error });
+		if ("showFailure" in options) options.showFailure(error);
+		else showErrorToast({ label: options.failureLabel, error });
 	}
 }
 
@@ -55,7 +58,8 @@ export class ProfileState {
 	readonly profileId: number;
 	readonly ourProfileId: number;
 
-	#fetchToken = 0;
+	#generation = new Generation();
+	#viewabilityChanges = new Generation();
 	#destroyed = false;
 	#active = false;
 
@@ -171,15 +175,19 @@ export class ProfileState {
 	}: {
 		error: Error | null;
 	}): PendingViewabilityChange {
+		const generation = this.#viewabilityChanges.next();
+		const superseded = () => this.#viewabilityChanges.isStale(generation);
 		const previous = this.error;
 		this.error = error;
 		this.changingViewability = true;
 		return {
 			revert: () => {
+				if (superseded()) return;
 				this.changingViewability = false;
 				if (this.error === error) this.error = previous;
 			},
 			settle: () => {
+				if (superseded()) return;
 				this.changingViewability = false;
 				if (!this.error && !this.profile) this.retry();
 			},
@@ -196,18 +204,18 @@ export class ProfileState {
 			this.profile = null;
 			this.note = null;
 		}
-		const token = ++this.#fetchToken;
+		const generation = this.#generation.next();
 		const errorBeforeLoad = this.error;
 		try {
 			const profile = refresh
 				? await refreshProfile(this.profileId)
 				: await getProfile(this.profileId);
-			if (this.#superseded(token)) return;
+			if (this.#superseded(generation)) return;
 			this.profile = profile;
 			if (this.error === errorBeforeLoad) this.error = null;
 			if (profile.isFavorite) void this.#loadNote();
 		} catch (error) {
-			if (this.#superseded(token)) return;
+			if (this.#superseded(generation)) return;
 			if (refresh && !isUnviewableProfileError(error)) {
 				console.error(error);
 				showErrorToast({
@@ -221,7 +229,7 @@ export class ProfileState {
 				error instanceof Error ? error : new Error(String(error));
 			this.profile = null;
 		} finally {
-			if (!this.#superseded(token)) {
+			if (!this.#superseded(generation)) {
 				this.loading = false;
 				this.refreshing = false;
 			}
@@ -230,17 +238,17 @@ export class ProfileState {
 
 	async #loadNote(): Promise<void> {
 		if (!this.#active) return;
-		const token = this.#fetchToken;
+		const generation = this.#generation.current;
 		try {
 			const note = await getFavoriteNote({ profileId: this.profileId });
-			if (this.#superseded(token)) return;
+			if (this.#superseded(generation)) return;
 			this.note = note;
 		} catch (error) {
 			console.error(error);
 		}
 	}
 
-	#superseded(token: number): boolean {
-		return this.#destroyed || token !== this.#fetchToken;
+	#superseded(generation: number): boolean {
+		return this.#destroyed || this.#generation.isStale(generation);
 	}
 }

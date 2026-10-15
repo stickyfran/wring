@@ -3,11 +3,13 @@
 
 	import type { MediaDimensions } from "$lib/util/media-dimensions";
 
+	import { registerAccountCache } from "$lib/api/account-caches";
+
 	export type LoadedVideo = {
 		src: string;
 		loop: boolean;
-		width: number;
-		height: number;
+		width?: number;
+		height?: number;
 	};
 
 	const EXPIRING_VIDEO_CACHE_KEY = "open_cached_expiring_videos_v1";
@@ -53,27 +55,24 @@
 	}
 
 	export const expiringVideoCache = loadExpiringVideosCache();
-</script>
-
-<script lang="ts">
-	import "photoswipe/style.css";
-	import { DownloadSimpleIcon, VideoCameraIcon } from "phosphor-svelte";
-	import { untrack } from "svelte";
-
-	import { registerAccountCache } from "$lib/api/account-caches";
-	import { showErrorToast } from "$lib/api/error-toast";
-	import { getSingleMessage } from "$lib/api/messaging/messages";
-	import { downloadMediaUrl } from "$lib/util/download";
-	import { proxyMediaUrl } from "$lib/util/media";
 
 	registerAccountCache({
 		reset: () => {
 			expiringVideoCache.clear();
 		},
 	});
-	import {
-		measureVideo,
-	} from "$lib/util/media-dimensions";
+</script>
+
+<script lang="ts">
+	import "photoswipe/style.css";
+	import DownloadSimpleIcon from "phosphor-svelte/lib/DownloadSimpleIcon";
+	import VideoCameraIcon from "phosphor-svelte/lib/VideoCameraIcon";
+	import { untrack } from "svelte";
+
+	import { showErrorToast } from "$lib/api/error-toast";
+	import { getSingleMessage } from "$lib/api/messaging/messages";
+	import { downloadMediaUrl } from "$lib/util/download";
+	import { proxyMediaUrl } from "$lib/util/media";
 	import {
 		applyPhotoSwipeDownloadButton,
 		openLightbox,
@@ -83,7 +82,7 @@
 
 	type VideoBody = VideoMessage["body"];
 
-	type LightboxVideo = { src: string; loop: boolean } & MediaDimensions;
+	type LightboxVideo = { src: string; loop: boolean };
 
 	let {
 		conversationId,
@@ -98,8 +97,6 @@
 		delivered: boolean;
 		isOut?: boolean;
 	} = $props();
-
-	const UNMEASURED: MediaDimensions = { width: 1080, height: 1920 };
 
 	const media = new MessageMediaState();
 
@@ -126,19 +123,13 @@
 
 	function play() {
 		if (ownUrl) {
-			void measureVideo(ownUrl)
-				.catch(() => UNMEASURED)
-				.then((size) => {
-					const vid: LoadedVideo = {
-						src: ownUrl,
-						loop: message.looping === true,
-						width: size.width,
-						height: size.height,
-					};
-					expiringVideoCache.set(messageId, vid);
-					saveExpiringVideosCache(expiringVideoCache);
-					player = { status: "open", video: vid, viewsLeft: 0 };
-				});
+			const vid: LoadedVideo = {
+				src: ownUrl,
+				loop: message.looping === true,
+			};
+			expiringVideoCache.set(messageId, vid);
+			saveExpiringVideosCache(expiringVideoCache);
+			player = { status: "open", video: vid, viewsLeft: 0 };
 		} else {
 			player = { status: "loading" };
 		}
@@ -151,13 +142,10 @@
 
 	async function refetchVideo(): Promise<RefetchedVideo | null> {
 		if (ownUrl) {
-			const size = await measureVideo(ownUrl).catch(() => UNMEASURED);
 			return {
 				video: {
 					src: ownUrl,
 					loop: message.looping === true,
-					width: size.width,
-					height: size.height,
 				},
 				viewsLeft: 0,
 			};
@@ -171,12 +159,9 @@
 		}
 		const src = proxyMediaUrl(refetched.body.url, { as: "video" });
 		if (src === null) return null;
-		const size = await measureVideo(src).catch(() => UNMEASURED);
 		const video: LightboxVideo = {
 			src,
 			loop: refetched.body.looping === true,
-			width: size.width,
-			height: size.height,
 		};
 		expiringVideoCache.set(messageId, video);
 		saveExpiringVideosCache(expiringVideoCache);

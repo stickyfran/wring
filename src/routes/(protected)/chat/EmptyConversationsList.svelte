@@ -1,11 +1,9 @@
 <script lang="ts">
-	import {
-		ChatCircleSlashIcon,
-		CheckCircleIcon,
-		FunnelIcon,
-		PushPinSlashIcon,
-		StarIcon,
-	} from "phosphor-svelte";
+	import ChatCircleSlashIcon from "phosphor-svelte/lib/ChatCircleSlashIcon";
+	import CheckCircleIcon from "phosphor-svelte/lib/CheckCircleIcon";
+	import FunnelIcon from "phosphor-svelte/lib/FunnelIcon";
+	import PushPinSlashIcon from "phosphor-svelte/lib/PushPinSlashIcon";
+	import StarIcon from "phosphor-svelte/lib/StarIcon";
 
 	import * as Empty from "$lib/components/ui/empty";
 

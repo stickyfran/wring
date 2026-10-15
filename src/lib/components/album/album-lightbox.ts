@@ -12,21 +12,18 @@ import {
 import { mediaFailure, remedyFor } from "$lib/platform/media-failure";
 import { now } from "$lib/util/clock";
 import { proxyMediaUrl } from "$lib/util/media";
-import {
-	measureImage,
-	measureVideo,
-	type MediaDimensions,
-} from "$lib/util/media-dimensions";
+import { measureImage, type MediaDimensions } from "$lib/util/media-dimensions";
 import {
 	applyPhotoSwipeComponent,
 	applyPhotoSwipeDownloadButton,
+	type LightboxItem,
 	openLightbox,
 } from "$lib/util/photoswipe";
 import { hasNoPlaysLeft, isVideoContent } from "./album";
 import NoPlaysLeftSlide from "./NoPlaysLeftSlide.svelte";
 
 export type AlbumSlide = AlbumContentResponse["content"][number] &
-	MediaDimensions;
+	Partial<MediaDimensions>;
 
 const SLIDES_TTL_MS = 5 * 60 * 1000;
 const UNMEASURED: MediaDimensions = { width: 1080, height: 1080 };
@@ -166,21 +163,12 @@ export async function loadAlbumSlides(albumId: number): Promise<AlbumSlide[]> {
 				}
 				const url = proxyMediaUrl(rawUrl, { as: kind });
 				const cover = proxyMediaUrl(rawCover);
-				const noPlays =
-					isVideoContent(slide.contentType) &&
-					(!rawUrl || rawUrl === "");
-				const coverUrl = noPlays
-					? (cover ?? proxyMediaUrl(slide.thumbUrl))
-					: cover;
-				const size =
-					kind === "image"
-						? SIZED_ON_LOAD
-						: await (
-								coverUrl === null
-									? measureVideo(url)
-									: measureImage(coverUrl)
-							).catch(() => UNMEASURED);
-				return { ...slide, url, coverUrl, ...size };
+				if (!hasNoPlaysLeft(slide)) {
+					return { ...slide, url, coverUrl: cover };
+				}
+				const still = cover ?? proxyMediaUrl(slide.thumbUrl);
+				const size = await measureImage(still).catch(() => UNMEASURED);
+				return { ...slide, url, coverUrl: still, ...size };
 			}),
 		);
 		const forgottenMeanwhile =
@@ -199,8 +187,6 @@ export async function loadAlbumSlides(albumId: number): Promise<AlbumSlide[]> {
 		throw error;
 	}
 }
-
-type LightboxItem = { src: string; width: number; height: number };
 
 export function albumPhotoRenewal({
 	albumId,

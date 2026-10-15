@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { ArrowLeftIcon, DownloadSimpleIcon } from "phosphor-svelte";
+	import ArrowLeftIcon from "phosphor-svelte/lib/ArrowLeftIcon";
+	import DownloadSimpleIcon from "phosphor-svelte/lib/DownloadSimpleIcon";
 
 	import { getConversations } from "$lib/chat/conversations-context.svelte";
 	import { isVideoContent } from "$lib/components/album/album";

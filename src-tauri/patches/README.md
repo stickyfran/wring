@@ -2,13 +2,15 @@
 
 Diffs against crates pulled from crates.io. Their sources are not committed.
 
-`bun run patch-deps` downloads each `.crate`, checks it against the sha256 in [`scripts/patch-deps.ts`](../../scripts/patch-deps.ts), applies the diff, and writes `src-tauri/.patched/<name>`, which `[patch.crates-io]` points at and git ignores. It runs from `postinstall` and from `reproPreamble` in [`nix/common.nix`](../../nix/common.nix), which every release build and the F-Droid recipe use. Re-runs compare a stamp and skip the network.
+`bun run patch-deps` downloads each `.crate`, checks it against the sha256 in [`scripts/patch-deps.ts`](../../scripts/patch-deps.ts), applies the diff, and writes `src-tauri/.patched/<name>`, which `[patch.crates-io]` points at and git ignores. It runs from `postinstall`, from `reproPreamble` in [`nix/common.nix`](../../nix/common.nix), which every release build uses, and from [`ci/fdroid/build-android.sh`](../../ci/fdroid/build-android.sh), which the F-Droid recipe uses. Re-runs compare a stamp and skip the network.
 
 Edit the tree and write the diff back with:
 
 ```sh
 bun run patch-deps -- --diff http2
 ```
+
+`cargo deny` skips path dependencies, so check advisories for the patched versions by hand when bumping them.
 
 ## http2
 
@@ -41,6 +43,15 @@ On Android the custom-protocol handler runs while the process-global `REQUEST_HA
 
 Backport of [wry 0.56.0](https://github.com/tauri-apps/wry/releases/tag/wry-v0.56.0). **Delete when a `tauri-runtime-wry` requiring `wry >= 0.56` is published**.
 
+On Android `ipc()` runs the IPC handler while holding the process-global `IPC` mutex, and `destroy_webview` takes it on the main thread when an activity is destroyed, so a sync command that waits on the main thread (`run_mobile_plugin`, any `app.path()` getter) never returns once a teardown is queued ahead of it.
+
+| File                 | Change                                                                     |
+| -------------------- | -------------------------------------------------------------------------- |
+| `android/binding.rs` | Clone the IPC handler out of the map and drop the guard before calling it. |
+| `android/mod.rs`     | Store it as `Arc<dyn Fn(Request<String>)>` so it can be cloned.            |
+
+Not a backport: wry 0.57.0 still holds the lock. **Keep it.**
+
 Android WebView paints `WebChromeClient.getDefaultVideoPoster()`, a gray play icon when it returns null, on every `<video>` without a `poster` until it plays or seeks. `android/kotlin/RustWebChromeClient.kt` returns a transparent bitmap instead. Backport of [wry#1804](https://github.com/tauri-apps/wry/pull/1804) from 0.56.1: **delete once the lock resolves `wry >= 0.56.1`**.
 
 On Android and Apple wry hands the WebView the fully buffered body. A handler can instead register a `ResponseStream` and name its id in the `x-wry-stream` header, and the WebView gets the body as it arrives. Like the Android WebView, the reader skips to the request's `Range` start first.
@@ -55,11 +66,36 @@ On Android and Apple wry hands the WebView the fully buffered body. A handler ca
 
 Not a backport: **keep it when the 0.56 hunks are deleted.**
 
+On Android wry serves custom protocols from `http(s)://<protocol>.localhost`, which Digital Asset Links can't verify. `WebViewBuilderExtAndroid::with_custom_protocol_host` serves one from `https://<host>` instead and answers every other form of that host with 403.
+
+| File                                   | Change                                                                                                                                                      |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lib.rs`, `error.rs`                   | `with_custom_protocol_host` and `Error::InvalidCustomProtocolHost`.                                                                                         |
+| `custom_protocol_workaround.rs`        | Validate the host, map `<protocol>://localhost` to `https://<host>` and back, block the host over `http`, on another port, with userinfo or a trailing dot. |
+| `android/mod.rs`, `android/binding.rs` | Map the start URL, route requests through the mapping, and hand the hosts to Kotlin.                                                                        |
+| `android/kotlin/RustWebViewClient.kt`  | 403 for unhandled and service worker requests to the host, reload redirects to it.                                                                          |
+
+Backport of [wry#1879](https://github.com/tauri-apps/wry/pull/1879). **Delete when a `tauri-runtime-wry` requiring a `wry` with `with_custom_protocol_host` is published.**
+
 ## tauri-codegen
 
 Embedded assets and CSP hashes are emitted in hash-map and `readdir` order. The patch sorts both.
 
 **Delete when `tauri-codegen > 2.6.3` publishes** — [tauri#15777](https://github.com/tauri-apps/tauri/pull/15777) is merged and supersedes it.
+
+## tauri, tauri-utils, tauri-runtime, tauri-runtime-wry
+
+`app > androidHostname` serves the Android app from `https://<host>` instead of `http://tauri.localhost`, so autofill services can verify the origin through Digital Asset Links. The stock CLI rejects the key in `tauri.conf.json`, so the app sets it through `context.config_mut()`.
+
+| Crate                                | Change                                                                                                         |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `tauri-utils`                        | `AppConfig::android_hostname` and the validated `AndroidHostname`.                                             |
+| `tauri-runtime`, `tauri-runtime-wry` | `WebviewAttributes::android_hostname`, passed to wry's `with_custom_protocol_host`.                            |
+| `tauri`                              | Move `tauri://localhost` URLs to the host, force `use_https_scheme`, and trust only that exact origin for IPC. |
+| `tauri`                              | Test only: the mock runtime reports the webview's `use_https_scheme`, as upstream `dev` does.                  |
+| `Cargo.toml`                         | Allow warnings, since a path dependency gets no `--cap-lints allow`.                                           |
+
+Backport of [tauri#16220](https://github.com/tauri-apps/tauri/pull/16220). **Delete when a tauri release ships `app > androidHostname`**, and move the host into `tauri.conf.json`. Until then these four crates, wry and tauri-codegen move together: tauri-codegen 2.7 already requires tauri-utils 2.10.
 
 ## tauri-plugin-geolocation
 

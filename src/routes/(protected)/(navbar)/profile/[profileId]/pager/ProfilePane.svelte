@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ArrowClockwiseIcon } from "phosphor-svelte";
+	import ArrowClockwiseIcon from "phosphor-svelte/lib/ArrowClockwiseIcon";
 
 	import {
 		BlockedProfileError,
@@ -80,7 +80,6 @@
 				<BlockedProfile
 					profileId={profileState.profileId}
 					blockedByUs={error.blockedByUs}
-					changingViewability={profileState.changingViewability}
 					markViewable={() => profileState.markViewable()}
 				/>
 			{:else if error instanceof HiddenProfileError}
@@ -115,6 +114,7 @@
 		>
 			<main
 				inert={!active}
+				data-refresh-content
 				class="relative mx-auto min-h-overscrollable w-full max-w-200"
 			>
 				{#if profile || medias.length > 0}

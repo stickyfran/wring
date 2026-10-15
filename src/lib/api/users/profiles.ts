@@ -395,9 +395,8 @@ export async function saveProfilePhotos({
 	});
 	res.assertOk();
 	const cached = profiles.get(cacheProfileId);
-	if (!cached) return;
 	const byHash = new Map(
-		cached.medias.map((media) => [media.mediaHash, media]),
+		(cached?.medias ?? []).map((media) => [media.mediaHash, media]),
 	);
 	mergeProfileEditIntoCaches({
 		cacheProfileId,

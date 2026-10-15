@@ -52,7 +52,6 @@
 			<ProfileActionsMenu
 				profileId={profile.profileId}
 				{profile}
-				blockable={profile.isBlockable !== false}
 				{changingViewability}
 				{markBlocked}
 				{markHidden}

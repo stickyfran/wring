@@ -16,6 +16,7 @@
 		reportReasonSchema,
 	} from "$lib/model/safety/reports";
 	import type { Profile } from "$lib/model/users/profiles";
+	import { showBlockFailure } from "./block-failure";
 	import { buildProfileReport } from "./report-request";
 
 	type ReportSubject = "profile" | "message";
@@ -25,15 +26,13 @@
 		profileId,
 		subject = "profile",
 		locations: presetLocations,
-		blockable = true,
-		onBlocked,
+		onBlock,
 	}: {
 		open: boolean;
 		profileId: Profile["profileId"];
 		subject?: ReportSubject;
 		locations?: ReportLocation[];
-		blockable?: boolean;
-		onBlocked?: () => void;
+		onBlock?: () => void;
 	} = $props();
 
 	const reasonLabels: Record<ReportReason, string> = {
@@ -80,7 +79,6 @@
 	let locations = $state<ReportLocation[]>([]);
 	let comment = $state("");
 	let submitting = $state(false);
-	let blocking = $state(false);
 	let submitted = $state(false);
 
 	const copy = $derived(subjectCopy[subject]);
@@ -118,18 +116,18 @@
 		}
 	}
 
-	async function block() {
-		if (blocking) return;
-		blocking = true;
+	function block() {
+		open = false;
+		if (onBlock) onBlock();
+		else void blockInBackground();
+	}
+
+	async function blockInBackground() {
 		try {
 			await blockUser({ profileId });
-			open = false;
-			onBlocked?.();
 		} catch (error) {
 			console.error(error);
-			showErrorToast({ label: "Failed to block user", error });
-		} finally {
-			blocking = false;
+			showBlockFailure(error);
 		}
 	}
 </script>
@@ -155,26 +153,15 @@
 					class="flex flex-col items-center gap-2 py-4 text-center"
 				>
 					<p>{copy.reviewed}</p>
-					{#if blockable}
-						<p class="text-sm text-muted-foreground">
-							You can block this profile so you stop seeing it.
-						</p>
-					{/if}
+					<p class="text-sm text-muted-foreground">
+						You can block this profile so you stop seeing it.
+					</p>
 				</div>
 			</ResponsiveDialog.Body>
 			<ResponsiveDialog.Footer>
-				{#if blockable}
-					<Button
-						variant="destructive"
-						disabled={blocking}
-						onclick={() => void block()}
-					>
-						{#if blocking}
-							<Spinner />
-						{/if}
-						Block profile
-					</Button>
-				{/if}
+				<Button variant="destructive" onclick={block}>
+					Block profile
+				</Button>
 				<Button variant="secondary" onclick={() => (open = false)}>
 					Done
 				</Button>
@@ -252,10 +239,11 @@
 				<ResponsiveDialog.Footer>
 					<Button
 						disabled={submitting || reason === null}
+						aria-busy={submitting}
 						onclick={() => void submit()}
 					>
 						{#if submitting}
-							<Spinner />
+							<Spinner aria-hidden="true" />
 						{/if}
 						Submit report
 					</Button>

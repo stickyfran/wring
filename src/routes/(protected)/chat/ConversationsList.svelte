@@ -220,6 +220,7 @@
 				</div>
 			{:else}
 				<div
+					data-refresh-content
 					class="min-h-overscrollable flex shrink-0 flex-col gap-1 pb-nav-clear"
 				>
 					{#each tabEntries as conversation, i (conversation.data.conversationId)}
