@@ -75,3 +75,11 @@ export const pushErrorSchema = z.object({
 });
 
 export type PushErrorReason = z.infer<typeof pushErrorSchema>["reason"];
+
+export const ntfySettingsSchema = z.object({
+	enabled: z.boolean(),
+	server: z.string(),
+	topic: z.string(),
+});
+
+export type NtfySettings = z.infer<typeof ntfySettingsSchema>;

@@ -53,6 +53,31 @@ object PushSettings {
 			.commit()
 	}
 
+	private const val NTFY_ENABLED = "ntfy_enabled"
+	private const val NTFY_SERVER = "ntfy_server"
+	private const val NTFY_TOPIC = "ntfy_topic"
+
+	fun ntfyEnabled(context: Context): Boolean =
+		preferences(context).getBoolean(NTFY_ENABLED, false)
+
+	fun setNtfyEnabled(context: Context, enabled: Boolean) {
+		preferences(context).edit().putBoolean(NTFY_ENABLED, enabled).commit()
+	}
+
+	fun ntfyServer(context: Context): String =
+		preferences(context).getString(NTFY_SERVER, "https://ntfy.sh") ?: "https://ntfy.sh"
+
+	fun setNtfyServer(context: Context, server: String) {
+		preferences(context).edit().putString(NTFY_SERVER, server).commit()
+	}
+
+	fun ntfyTopic(context: Context): String =
+		preferences(context).getString(NTFY_TOPIC, "") ?: ""
+
+	fun setNtfyTopic(context: Context, topic: String) {
+		preferences(context).edit().putString(NTFY_TOPIC, topic).commit()
+	}
+
 	private fun preferences(context: Context) =
 		context.applicationContext.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
 }

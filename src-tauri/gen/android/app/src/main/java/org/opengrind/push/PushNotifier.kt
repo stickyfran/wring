@@ -117,8 +117,13 @@ object PushNotifier {
 	): Posted? {
 		val decision = batch.maxBy(PushDecision.Notify::timestamp)
 		if (!PushSettings.notificationsEnabled(context)) return null
-		if (!notificationsPermitted(context)) return null
 		if (!PushSettings.categoryEnabled(context, decision.kind)) return null
+
+		if (PushSettings.ntfyEnabled(context)) {
+			NtfySender.send(context, decision)
+		}
+
+		if (!notificationsPermitted(context)) return null
 		createChannels(context)
 		val channel = channelOf(decision.kind)
 		val id = decision.postedId

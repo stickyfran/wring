@@ -21,7 +21,13 @@ import {
 	pushTokenSchema,
 	shownConversationsSchema,
 	TAP_TAG_PREFIX,
+	type NtfySettings,
+	ntfySettingsSchema,
 } from "./types";
+import {
+	preferencesSnapshot,
+	setPreferences,
+} from "$lib/app-data/preferences.svelte";
 
 export * from "./types";
 
@@ -144,3 +150,68 @@ export async function watchPush(
 	};
 	await invoke("push_watch", { onEvent });
 }
+
+export async function getNtfySettings(): Promise<NtfySettings> {
+	if (isAndroidPlatform()) {
+		try {
+			return ntfySettingsSchema.parse(await invoke("push_ntfy_settings"));
+		} catch (error) {
+			console.warn(
+				"Could not read android push ntfy settings, falling back to preferences",
+				error,
+			);
+		}
+	}
+	const prefs = preferencesSnapshot();
+	return {
+		enabled: prefs.ntfyEnabled,
+		server: prefs.ntfyServer,
+		topic: prefs.ntfyTopic,
+	};
+}
+
+export async function setNtfySettings(
+	settings: NtfySettings,
+): Promise<void> {
+	await setPreferences({
+		ntfyEnabled: settings.enabled,
+		ntfyServer: settings.server,
+		ntfyTopic: settings.topic,
+	});
+	if (isAndroidPlatform()) {
+		try {
+			await invoke("push_set_ntfy_settings", { settings });
+		} catch (error) {
+			console.warn("Could not save ntfy settings to android plugin", error);
+		}
+	}
+}
+
+export async function sendTestNtfy(settings?: NtfySettings): Promise<void> {
+	const cfg = settings ?? (await getNtfySettings());
+	if (isAndroidPlatform()) {
+		await invoke("push_send_test_ntfy", { settings: cfg });
+		return;
+	}
+	const baseUrl = cfg.server.trim().replace(/\/+$/, "");
+	const topicClean = cfg.topic.trim().replace(/^\/+/, "");
+	if (!baseUrl || !topicClean) {
+		throw new Error("Server URL and topic cannot be empty");
+	}
+	const url = `${baseUrl}/${topicClean}`;
+	const res = await fetch(url, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({
+			topic: topicClean,
+			title: "Open - Test Notification",
+			message:
+				"ntfy push notifications are working without Google Services!",
+			priority: 4,
+			tags: ["white_check_mark", "open"],
+			click: "opengrind://chat",
+		}),
+	});
+	if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+

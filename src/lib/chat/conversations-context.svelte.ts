@@ -2,7 +2,6 @@ import { createContext } from "svelte";
 
 import { accountScoped } from "$lib/api/account-caches";
 import { showIncomingMessageToast } from "$lib/components/incoming-message-toast/incoming-message-toast-manager";
-import { showSystemNotificationForMessage } from "$lib/platform/notifications";
 import { announceMessage } from "$lib/push/announce";
 import {
 	withdrawChatNotification,
@@ -30,7 +29,6 @@ export const getOrCreateConversationsState = accountScoped(
 					},
 					conversationId: conversation.data.conversationId,
 				});
-				showSystemNotificationForMessage({ message, conversation });
 			},
 			onConversationRead: (conversationId) =>
 				withdrawChatNotification({ conversationId }),

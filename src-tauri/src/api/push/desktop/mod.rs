@@ -196,3 +196,28 @@ pub fn watch(
 	app.state::<DesktopPush>().watch(on_event);
 	Ok(())
 }
+
+pub async fn ntfy_settings(
+	_app: &AppHandle,
+) -> Result<super::NtfySettings, PushError> {
+	Ok(super::NtfySettings {
+		enabled: false,
+		server: "https://ntfy.sh".to_owned(),
+		topic: String::new(),
+	})
+}
+
+pub async fn set_ntfy_settings(
+	_app: &AppHandle,
+	_settings: super::NtfySettings,
+) -> Result<(), PushError> {
+	Ok(())
+}
+
+pub async fn send_test_ntfy(
+	_app: &AppHandle,
+	_settings: super::NtfySettings,
+) -> Result<(), PushError> {
+	Ok(())
+}
+

@@ -21,21 +21,6 @@ declare global {
 		__AndroidOnBackGestureCancel?: () => void;
 		__AndroidBack?: { moveTaskToBack(): void; gestureProgress(): number };
 		pswp?: unknown;
-		__AndroidNotification?: {
-			showNotification(
-				id: number,
-				title: string,
-				body: string,
-				conversationId: string,
-			): void;
-			requestPermission(): void;
-			syncCredentials?(token: string, profileId: number): void;
-			clearCredentials?(): void;
-			startBackgroundService?(): void;
-			stopBackgroundService?(): void;
-			requestIgnoreBatteryOptimizations?(): void;
-			openNotificationSettings?(): void;
-		};
 		__AndroidDownload?: {
 			download(url: string, filename?: string): void;
 			downloadToSubdir?(

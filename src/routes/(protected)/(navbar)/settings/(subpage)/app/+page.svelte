@@ -17,7 +17,6 @@
 	import AppsMenuEntrySetting from "./AppsMenuEntrySetting.svelte";
 	import AutomaticUpdatesSetting from "./AutomaticUpdatesSetting.svelte";
 	import BackdropBlurSetting from "./BackdropBlurSetting.svelte";
-	import NotificationSettings from "./NotificationSettings.svelte";
 	import PreferenceSwitchSetting from "./PreferenceSwitchSetting.svelte";
 	import UnitsSetting from "./UnitsSetting.svelte";
 </script>
@@ -79,11 +78,10 @@
 <Item.Root variant="outline">
 	{#snippet child({ props })}
 		<a href="/settings/app/notifications" {...props}>
-			{@render rowContent({ title: "FCM Push Notifications" })}
+			{@render rowContent({ title: "Notifications" })}
 		</a>
 	{/snippet}
 </Item.Root>
-<NotificationSettings />
 <h2>Privacy</h2>
 <PreferenceSwitchSetting
 	preference="stayOnline"

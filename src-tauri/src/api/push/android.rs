@@ -216,6 +216,26 @@ pub async fn deeplink_pending(app: &AppHandle) -> Result<bool, PushError> {
 		.map(|response| response.pending)
 }
 
+pub async fn ntfy_settings(
+	app: &AppHandle,
+) -> Result<super::NtfySettings, PushError> {
+	call::<super::NtfySettings>(app, "ntfySettings", ()).await
+}
+
+pub async fn set_ntfy_settings(
+	app: &AppHandle,
+	settings: super::NtfySettings,
+) -> Result<(), PushError> {
+	run(app, "setNtfySettings", settings).await
+}
+
+pub async fn send_test_ntfy(
+	app: &AppHandle,
+	settings: super::NtfySettings,
+) -> Result<(), PushError> {
+	run(app, "sendTestNtfy", settings).await
+}
+
 pub fn watch(
 	app: &AppHandle,
 	on_event: tauri::ipc::Channel<PushSignal>,

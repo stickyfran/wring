@@ -48,6 +48,13 @@ internal class ConversationArgs {
 	var dedupeKey: String? = null
 }
 
+@InvokeArg
+internal class NtfySettingsArgs {
+	var enabled: Boolean = false
+	var server: String = "https://ntfy.sh"
+	var topic: String = ""
+}
+
 @TauriPlugin(
 	permissions = [
 		Permission(
@@ -186,6 +193,39 @@ class PushPlugin(private val activity: Activity) : Plugin(activity) {
 	@Command
 	fun deeplinkPending(invoke: Invoke) =
 		invoke.resolve(JSObject().apply { put("pending", PushEvents.deeplinkPending()) })
+
+	@Command
+	fun ntfySettings(invoke: Invoke) {
+		invoke.resolve(
+			JSObject().apply {
+				put("enabled", PushSettings.ntfyEnabled(activity))
+				put("server", PushSettings.ntfyServer(activity))
+				put("topic", PushSettings.ntfyTopic(activity))
+			},
+		)
+	}
+
+	@Command
+	fun setNtfySettings(invoke: Invoke) {
+		val args = invoke.parseArgs(NtfySettingsArgs::class.java)
+		PushSettings.setNtfyEnabled(activity, args.enabled)
+		PushSettings.setNtfyServer(activity, args.server)
+		PushSettings.setNtfyTopic(activity, args.topic)
+		invoke.resolve()
+	}
+
+	@Command
+	fun sendTestNtfy(invoke: Invoke) {
+		val args = invoke.parseArgs(NtfySettingsArgs::class.java)
+		Thread({
+			val result = NtfySender.sendTest(args.server, args.topic)
+			if (result.isSuccess) {
+				invoke.resolve(JSObject().apply { put("success", true) })
+			} else {
+				invoke.reject(result.exceptionOrNull()?.message ?: "Failed to send ntfy notification")
+			}
+		}, "opengrind-ntfy-test").start()
+	}
 
 	private fun offerDeeplink(intent: Intent?) {
 		val deeplink = intent?.getStringExtra(PushNotifier.EXTRA_DEEPLINK) ?: return

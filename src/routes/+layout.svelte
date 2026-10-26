@@ -27,10 +27,6 @@
 	import { blockZoom } from "$lib/platform/block-zoom";
 	import { trackHoverPointer } from "$lib/platform/hover-pointer";
 	import { keepLinksInApp } from "$lib/platform/in-app-links";
-	import {
-		requestSystemNotificationPermission,
-		syncBackgroundServiceState,
-	} from "$lib/platform/notifications";
 	import { isAndroidPlatform } from "$lib/platform/os";
 	import { installScrollGestureBridge } from "$lib/platform/scroll-gesture";
 	import { reconcileNotifications } from "$lib/push/notifications.svelte";
@@ -75,14 +71,9 @@
 				console.error("Failed to register back button listener", error);
 			});
 		}
-		requestSystemNotificationPermission();
-		void hydratePreferences()
-			.then(() => {
-				syncBackgroundServiceState();
-			})
-			.catch((error: unknown) => {
-				console.error("Failed to hydrate preferences", error);
-			});
+		void hydratePreferences().catch((error: unknown) => {
+			console.error("Failed to hydrate preferences", error);
+		});
 		void hydrateBackdropCompositing().catch((error: unknown) => {
 			console.error("Failed to read backdrop compositing", error);
 		});

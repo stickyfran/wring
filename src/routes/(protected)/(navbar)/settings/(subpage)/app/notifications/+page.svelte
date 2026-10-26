@@ -4,6 +4,7 @@
 	import NotificationCategoriesSetting from "./NotificationCategoriesSetting.svelte";
 	import NotificationMasterSetting from "./NotificationMasterSetting.svelte";
 	import NotificationModeSetting from "./NotificationModeSetting.svelte";
+	import NotificationNtfySetting from "./NotificationNtfySetting.svelte";
 </script>
 
 {#if pushAvailableHere()}
@@ -11,6 +12,7 @@
 	{#if isAndroidPlatform()}
 		<NotificationModeSetting />
 	{/if}
+	<NotificationNtfySetting />
 	<NotificationCategoriesSetting />
 {:else}
 	<p

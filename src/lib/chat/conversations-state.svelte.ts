@@ -24,7 +24,6 @@ import {
 	previewFromMessage,
 	previewLabel,
 } from "$lib/model/messaging/message-preview";
-import { showSystemNotification } from "$lib/platform/notifications";
 import { below } from "$lib/util/breakpoints.svelte";
 import { reconciler } from "$lib/util/reconcile";
 import { SentinelPaging } from "$lib/util/sentinel-paging.svelte";

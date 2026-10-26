@@ -26,7 +26,7 @@
 			mode: "slow",
 			title: "Slow mode",
 			description:
-				"Poll for new notifications periodically in the background using Android's native scheduler",
+				"Poll for new notifications periodically in the background using Android's native scheduler (no Google Services required)",
 		},
 	];
 

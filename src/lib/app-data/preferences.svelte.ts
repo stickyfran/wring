@@ -34,7 +34,6 @@ const preferencesSchema = z.object({
 	revealProfileViews: z.boolean().default(false),
 	stayOnline: z.boolean().default(true),
 	units: unitSystemSchema.default("metric"),
-	backgroundService: z.boolean().default(true),
 	ntfyEnabled: z.boolean().default(false),
 	ntfyServer: z.string().default("https://ntfy.sh"),
 	ntfyTopic: z.string().default(""),

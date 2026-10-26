@@ -4,10 +4,6 @@
 	import CommandCenter from "$lib/components/command-center/CommandCenter.svelte";
 	import MediaDropOverlay from "$lib/components/shared/MediaDropOverlay.svelte";
 	import { restoreStrandedLocation } from "$lib/entitlements/honduras-hold";
-	import {
-		syncBackgroundServiceState,
-		syncSessionCredentials,
-	} from "$lib/platform/notifications";
 	import { listenForKeyboardMedia } from "$lib/platform/keyboard-media.svelte";
 	import { listenForMedia } from "$lib/platform/media-intake.svelte";
 	import { startOnlineHeartbeat } from "$lib/presence/online-heartbeat";
@@ -19,10 +15,6 @@
 	guardDeletedPages();
 
 	$effect(() => startOnlineHeartbeat());
-	$effect(() => {
-		void syncSessionCredentials();
-		syncBackgroundServiceState();
-	});
 	$effect(() => retryBrokenMediaWhenOnline());
 	$effect(() => listenForMedia());
 	$effect(() => listenForKeyboardMedia());

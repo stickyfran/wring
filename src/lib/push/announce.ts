@@ -1,3 +1,4 @@
+import { preferencesSnapshot } from "$lib/app-data/preferences.svelte";
 import { isDesktopPlatform } from "$lib/platform/os";
 import type { ApiResponseMessage } from "$lib/model/messaging/messages";
 import { conversationDeeplink, TAPS_DEEPLINK } from "./deeplink";
@@ -39,7 +40,40 @@ function typedText(message: ApiResponseMessage): string {
 	}
 }
 
+async function forwardToNtfy(announcement: Announcement): Promise<void> {
+	try {
+		const prefs = preferencesSnapshot();
+		if (!prefs.ntfyEnabled || !prefs.ntfyTopic.trim()) return;
+
+		const baseUrl = prefs.ntfyServer.trim().replace(/\/+$/, "");
+		const topicClean = prefs.ntfyTopic.trim().replace(/^\/+/, "");
+		if (!baseUrl || !topicClean) return;
+
+		const url = `${baseUrl}/${topicClean}`;
+		const tag =
+			announcement.category === "messages"
+				? "speech_balloon"
+				: "sparkles";
+
+		await fetch(url, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				topic: topicClean,
+				title: announcement.title,
+				message: announcement.body,
+				priority: 4,
+				tags: [tag, "open"],
+				click: announcement.deeplink,
+			}),
+		});
+	} catch (error) {
+		console.error("Failed to forward announcement to ntfy:", error);
+	}
+}
+
 function announce(announcement: Announcement): void {
+	void forwardToNtfy(announcement);
 	if (!isDesktopPlatform()) return;
 	notify(announcement).catch((error: unknown) => {
 		console.error("Failed to show the notification", error);

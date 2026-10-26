@@ -36,6 +36,15 @@ export const push = {
 	setMode: vi.fn(settled),
 	setNotificationsEnabled: vi.fn(settled),
 	setPushCategory: vi.fn(settled),
+	getNtfySettings: vi.fn(() =>
+		Promise.resolve({
+			enabled: false,
+			server: "https://ntfy.sh",
+			topic: "",
+		}),
+	),
+	setNtfySettings: vi.fn(settled),
+	sendTestNtfy: vi.fn(settled),
 };
 
 export const account = {

@@ -1,9 +1,6 @@
 package org.opengrind
 
 import android.app.DownloadManager
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -21,8 +18,6 @@ import android.widget.TextView
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -75,11 +70,6 @@ class MainActivity : TauriActivity() {
 		}
 	}
 
-	companion object {
-		private const val NOTIFICATION_CHANNEL_ID = "open_messages"
-		private const val PERMISSION_REQUEST_CODE_NOTIFICATIONS = 1001
-	}
-
 	inner class InsetsInterface {
 		@JavascriptInterface fun top() = webInsets.top
 		@JavascriptInterface fun bottom() = webInsets.bottom
@@ -115,102 +105,6 @@ class MainActivity : TauriActivity() {
 
 		@JavascriptInterface fun moveTaskToBack() {
 			runOnUiThread { this@MainActivity.moveTaskToBack(true) }
-		}
-	}
-
-	inner class NotificationInterface {
-		@JavascriptInterface
-		fun syncCredentials(token: String, profileId: Long) {
-			OpenGrindSecureStorage.saveCredentials(applicationContext, token, profileId)
-			if (OpenGrindSecureStorage.isBackgroundServiceEnabled(applicationContext)) {
-				runOnUiThread {
-					startBackgroundServiceInternal()
-				}
-			}
-		}
-
-		@JavascriptInterface
-		fun clearCredentials() {
-			OpenGrindSecureStorage.clearCredentials(applicationContext)
-			runOnUiThread {
-				stopBackgroundServiceInternal()
-			}
-		}
-
-		@JavascriptInterface
-		fun showNotification(id: Int, title: String, body: String, conversationId: String?) {
-			runOnUiThread {
-				sendNativeNotification(id, title, body, conversationId)
-			}
-		}
-
-		@JavascriptInterface
-		fun requestPermission() {
-			runOnUiThread {
-				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-					if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-						requestPermissions(
-							arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
-							PERMISSION_REQUEST_CODE_NOTIFICATIONS
-						)
-					}
-				}
-			}
-		}
-
-		@JavascriptInterface
-		fun startBackgroundService() {
-			OpenGrindSecureStorage.setBackgroundServiceEnabled(applicationContext, true)
-			runOnUiThread {
-				startBackgroundServiceInternal()
-			}
-		}
-
-		@JavascriptInterface
-		fun stopBackgroundService() {
-			OpenGrindSecureStorage.setBackgroundServiceEnabled(applicationContext, false)
-			runOnUiThread {
-				stopBackgroundServiceInternal()
-			}
-		}
-
-		@JavascriptInterface
-		fun requestIgnoreBatteryOptimizations() {
-			runOnUiThread {
-				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-					try {
-						val powerManager = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
-						if (powerManager != null && !powerManager.isIgnoringBatteryOptimizations(packageName)) {
-							val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-								data = Uri.parse("package:$packageName")
-							}
-							startActivity(intent)
-						}
-					} catch (e: Exception) {
-						e.printStackTrace()
-					}
-				}
-			}
-		}
-
-		@JavascriptInterface
-		fun openNotificationSettings() {
-			runOnUiThread {
-				try {
-					val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-						Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-							putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-						}
-					} else {
-						Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-							data = Uri.parse("package:$packageName")
-						}
-					}
-					startActivity(intent)
-				} catch (e: Exception) {
-					e.printStackTrace()
-				}
-			}
 		}
 	}
 
@@ -333,93 +227,8 @@ class MainActivity : TauriActivity() {
 		}
 	}
 
-	private fun startBackgroundServiceInternal() {
-		try {
-			val serviceIntent = Intent(this, BackgroundSyncService::class.java).apply {
-				action = BackgroundSyncService.ACTION_START
-			}
-			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-				startForegroundService(serviceIntent)
-			} else {
-				startService(serviceIntent)
-			}
-		} catch (e: Exception) {
-			e.printStackTrace()
-		}
-	}
-
-	private fun stopBackgroundServiceInternal() {
-		try {
-			val serviceIntent = Intent(this, BackgroundSyncService::class.java).apply {
-				action = BackgroundSyncService.ACTION_STOP
-			}
-			startService(serviceIntent)
-		} catch (e: Exception) {
-			e.printStackTrace()
-		}
-	}
-
-	private fun createNotificationChannel() {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-			val channel = NotificationChannel(
-				NOTIFICATION_CHANNEL_ID,
-				"Messages",
-				NotificationManager.IMPORTANCE_HIGH
-			).apply {
-				description = "Direct messages notifications"
-				enableLights(true)
-				enableVibration(true)
-				setShowBadge(true)
-				lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
-			}
-			val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-			notificationManager?.createNotificationChannel(channel)
-		}
-	}
-
-	private fun sendNativeNotification(id: Int, title: String, body: String, conversationId: String?) {
-		BackgroundSyncService.sendNotification(this, id, title, body, conversationId)
-	}
-
-	override fun onPause() {
-		super.onPause()
-		webViewRef?.onResume()
-		webViewRef?.resumeTimers()
-	}
-
-	override fun onResume() {
-		super.onResume()
-		webViewRef?.onResume()
-		webViewRef?.resumeTimers()
-	}
-
-	override fun onStop() {
-		super.onStop()
-		webViewRef?.onResume()
-		webViewRef?.resumeTimers()
-	}
-
-	override fun onNewIntent(intent: Intent) {
-		super.onNewIntent(intent)
-		setIntent(intent)
-		val conversationId = intent.getStringExtra("conversationId")
-		if (!conversationId.isNullOrEmpty()) {
-			webViewRef?.evaluateJavascript("window.location.href = '/chat/${conversationId}'", null)
-		}
-	}
-	
 	override fun onCreate(savedInstanceState: Bundle?) {
 		enableEdgeToEdge()
-		createNotificationChannel()
-		startBackgroundServiceInternal()
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-			if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-				requestPermissions(
-					arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
-					PERMISSION_REQUEST_CODE_NOTIFICATIONS
-				)
-			}
-		}
 		pendingWebViewWarning = WebViewSupport.current(
 			context = this,
 			minSupportedMajor = BuildConfig.MIN_SUPPORTED_WEBVIEW_MAJOR,
@@ -497,7 +306,6 @@ class MainActivity : TauriActivity() {
 		}
 		webView.addJavascriptInterface(InsetsInterface(), "__AndroidInsets")
 		webView.addJavascriptInterface(BackInterface(), "__AndroidBack")
-		webView.addJavascriptInterface(NotificationInterface(), "__AndroidNotification")
 		webView.addJavascriptInterface(DownloadInterface(), "__AndroidDownload")
 		webView.setDownloadListener { url, _, _, _, _ ->
 			DownloadInterface().download(url, null)

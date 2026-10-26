@@ -40,6 +40,14 @@ pub struct PushCategory {
 	pub system_blocked: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NtfySettings {
+	pub enabled: bool,
+	pub server: String,
+	pub topic: String,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum NotificationPermissionState {
@@ -197,6 +205,29 @@ pub async fn push_open_category_settings(
 	category: String,
 ) -> Result<(), AppError> {
 	Ok(backend::open_category_settings(&app, category).await?)
+}
+
+#[tauri::command]
+pub async fn push_ntfy_settings(
+	app: AppHandle,
+) -> Result<NtfySettings, AppError> {
+	Ok(backend::ntfy_settings(&app).await?)
+}
+
+#[tauri::command]
+pub async fn push_set_ntfy_settings(
+	app: AppHandle,
+	settings: NtfySettings,
+) -> Result<(), AppError> {
+	Ok(backend::set_ntfy_settings(&app, settings).await?)
+}
+
+#[tauri::command]
+pub async fn push_send_test_ntfy(
+	app: AppHandle,
+	settings: NtfySettings,
+) -> Result<(), AppError> {
+	Ok(backend::send_test_ntfy(&app, settings).await?)
 }
 
 #[tauri::command]
