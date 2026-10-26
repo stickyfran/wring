@@ -208,7 +208,9 @@
 			items: [video],
 			videoAt: videoSlide,
 			configure: (lightbox) => {
-				applyPhotoSwipeDownloadButton(lightbox, videoSlide);
+				if (!isOut) {
+					applyPhotoSwipeDownloadButton(lightbox, videoSlide);
+				}
 			},
 			signal: controller.signal,
 			onClosed: () => finishPlayback(viewsLeft),
@@ -224,7 +226,7 @@
 	const bubbleClass: import("svelte/elements").ClassValue = $derived([
 		"relative flex w-fit items-center gap-2 rounded-xl border border-border bg-input px-4 py-3 text-start font-medium",
 		media.cornerClass,
-		{ "ms-3": !media.clone, "size-full": media.clone },
+		{ "size-full": media.clone },
 	]);
 </script>
 
@@ -259,7 +261,7 @@
 		{@attach media.attach}
 	>
 		{@render bubbleContent()}
-		{#if cachedVideo !== null}
+		{#if cachedVideo !== null && !isOut}
 			<button
 				type="button"
 				class="ms-2 flex items-center gap-1 rounded bg-secondary px-2 py-1 text-xs font-semibold text-primary hover:bg-secondary/80 cursor-pointer"

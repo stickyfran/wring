@@ -22,6 +22,13 @@ export const meTab = (page: Page) =>
 
 export const pathname = (page: Page) => page.evaluate(() => location.pathname);
 export const historyDepth = (page: Page) => page.evaluate(() => history.length);
+export const historyEntries = (page: Page) =>
+	page.evaluate(() => ({
+		index: navigation.currentEntry!.index,
+		paths: navigation
+			.entries()
+			.map((entry) => (entry.url ? new URL(entry.url).pathname : "")),
+	}));
 
 export function afterTwoFrames(page: Page): Promise<void> {
 	return page.evaluate(
@@ -129,17 +136,26 @@ export async function installEventInjection(page: Page): Promise<void> {
 	});
 }
 
-export function emitMessageSent(page: Page, payload: unknown): Promise<void> {
+export function emitTauriEvent(
+	page: Page,
+	{ event, payload }: { event: string; payload: unknown },
+): Promise<void> {
 	return page.evaluate(
-		(message) =>
-			window.__emitTauriEvent?.("grindr:chat_v1_message_sent", {
-				type: "chat.v1.message_sent",
-				notificationId: null,
-				ref: null,
-				payload: message,
-			}),
-		payload,
+		([name, data]) => window.__emitTauriEvent?.(name, data),
+		[event, payload] as const,
 	);
+}
+
+export function emitMessageSent(page: Page, payload: unknown): Promise<void> {
+	return emitTauriEvent(page, {
+		event: "grindr:chat_v1_message_sent",
+		payload: {
+			type: "chat.v1.message_sent",
+			notificationId: null,
+			ref: null,
+			payload,
+		},
+	});
 }
 
 type MessageEnvelope = {

@@ -121,6 +121,7 @@
 					<ImageCarousel
 						{medias}
 						profileId={profile?.profileId ?? row?.id}
+						{ourProfile}
 					/>
 				{:else}
 					<Skeleton

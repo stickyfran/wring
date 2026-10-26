@@ -41,7 +41,7 @@ On Android the custom-protocol handler runs while the process-global `REQUEST_HA
 | `lib.rs`, `wkwebview/mod.rs` | `Send + Sync` on `custom_protocols`, both `with_*_custom_protocol` bounds and `protocol_ptrs`, which the clone requires. |
 | `Cargo.toml`                 | Allow warnings, since a path dependency gets no `--cap-lints allow`.                                                     |
 
-Backport of [wry 0.56.0](https://github.com/tauri-apps/wry/releases/tag/wry-v0.56.0). **Delete when a `tauri-runtime-wry` requiring `wry >= 0.56` is published**.
+Backport of [wry 0.56.0](https://github.com/tauri-apps/wry/releases/tag/wry-v0.56.0). **Delete with the move to `tauri-runtime-wry` 2.12**, the first to require `wry >= 0.56`.
 
 On Android `ipc()` runs the IPC handler while holding the process-global `IPC` mutex, and `destroy_webview` takes it on the main thread when an activity is destroyed, so a sync command that waits on the main thread (`run_mobile_plugin`, any `app.path()` getter) never returns once a teardown is queued ahead of it.
 
@@ -77,11 +77,29 @@ On Android wry serves custom protocols from `http(s)://<protocol>.localhost`, wh
 
 Backport of [wry#1879](https://github.com/tauri-apps/wry/pull/1879). **Delete when a `tauri-runtime-wry` requiring a `wry` with `with_custom_protocol_host` is published.**
 
+Android keyboards insert stickers and GIFs with `commitContent`, which the WebView accepts only in rich-text fields. `RustWebView` hands its input connection to the app's `KeyboardMedia`, which declares image types and stages what the keyboard sends. `WRY_RUSTWEBVIEW_CLASS_EXTENSION` can't carry this: Tauri's Gradle task runs cargo from the repo root, so `src-tauri/.cargo/config.toml` is never read.
+
+| File                            | Change                                                                                               |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `android/kotlin/RustWebView.kt` | Override `onCreateInputConnection` to wrap the connection with `{{package}}.keyboard.KeyboardMedia`. |
+
+Not upstreamable: it calls app code. **Keep it.**
+
+On macOS wry runs its drag code even when the app disables its drag-drop handler. It reads `NSFilenamesPboardType` with `unwrap`, which aborts on a drag that declares file names it never supplies ([wry#1756](https://github.com/tauri-apps/wry/issues/1756)), and it turns WebKit's "no operation" into Copy, so a drop the page didn't accept loads the dragged URL.
+
+| File                                                  | Change                                                                       |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `wkwebview/class/wry_web_view.rs`, `wkwebview/mod.rs` | Keep the handler as an `Option`, `None` when disabled.                       |
+| `wkwebview/drag_drop.rs`                              | Without a handler, pass every drag callback to WebKit untouched.             |
+| `wkwebview/drag_drop.rs`                              | Skip a file name list that is missing or malformed instead of unwrapping it. |
+
+Not a backport: wry 0.57.0 still has both. **Keep it.**
+
 ## tauri-codegen
 
 Embedded assets and CSP hashes are emitted in hash-map and `readdir` order. The patch sorts both.
 
-**Delete when `tauri-codegen > 2.6.3` publishes** — [tauri#15777](https://github.com/tauri-apps/tauri/pull/15777) is merged and supersedes it.
+**Delete when moving to `tauri-codegen` 2.7**, which ships [tauri#15777](https://github.com/tauri-apps/tauri/pull/15777). 2.6.3 does not.
 
 ## tauri, tauri-utils, tauri-runtime, tauri-runtime-wry
 

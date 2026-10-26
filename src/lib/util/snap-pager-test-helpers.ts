@@ -44,7 +44,9 @@ export function fakePagerLayout({
 		{
 			id = 0,
 			target = touchTarget ?? node,
-		}: { id?: number; target?: EventTarget } = {},
+			x = 0,
+			y = 0,
+		}: { id?: number; target?: EventTarget; x?: number; y?: number } = {},
 	) => {
 		if (type === "touchstart") touchesOnScreen.add(id);
 		else touchesOnScreen.delete(id);
@@ -55,7 +57,9 @@ export function fakePagerLayout({
 					identifier,
 				})),
 			},
-			changedTouches: { value: [{ identifier: id }] },
+			changedTouches: {
+				value: [{ identifier: id, clientX: x, clientY: y }],
+			},
 		});
 		target.dispatchEvent(event);
 	};
@@ -206,5 +210,15 @@ export function macosGesture() {
 		released: () => gesture.ingest({ state: "released" }),
 		momentum: () => gesture.ingest({ state: "momentum" }),
 		idle: () => gesture.ingest({ state: "idle" }),
+	};
+}
+
+export function waylandGesture() {
+	const gesture = new ScrollGestureState();
+	return {
+		gesture,
+		fingers: () => gesture.ingest({ state: "fingers" }),
+		lift: ({ vx = 0, vy = 0 }: { vx?: number; vy?: number } = {}) =>
+			gesture.ingest({ state: "released", vx, vy }),
 	};
 }

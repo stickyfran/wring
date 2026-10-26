@@ -64,6 +64,7 @@
 				label="Preview album"
 				class="aspect-3/4 w-full"
 				contentClass="rounded-xl"
+				allowDownload={false}
 			/>
 		{/if}
 	{/snippet}

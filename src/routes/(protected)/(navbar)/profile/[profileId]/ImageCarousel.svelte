@@ -20,6 +20,7 @@
 	let {
 		medias,
 		profileId,
+		ourProfile = false,
 	}: {
 		medias: {
 			mediaHash: string;
@@ -27,6 +28,7 @@
 			createdAt: number | null;
 		}[];
 		profileId?: number;
+		ourProfile?: boolean;
 	} = $props();
 
 	const PHOTOS_LOADED_AHEAD = 2;
@@ -57,11 +59,13 @@
 				applyPhotoSwipeThumbDimensions(lightbox);
 				applyPhotoSwipeViewportSync(lightbox);
 				applyPhotoSwipeBackGesture(lightbox);
-				applyPhotoSwipeDownloadButton(
-					lightbox,
-					undefined,
-					profileId ? String(profileId) : undefined,
-				);
+				if (!ourProfile) {
+					applyPhotoSwipeDownloadButton(
+						lightbox,
+						undefined,
+						profileId ? String(profileId) : undefined,
+					);
+				}
 				stopOpenTracking = applyPhotoSwipeOpenTracking(lightbox);
 				lightbox.on("beforeOpen", () => {
 					raiseReach(medias.length - 1);

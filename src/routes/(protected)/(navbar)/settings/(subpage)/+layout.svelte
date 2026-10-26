@@ -16,6 +16,10 @@
 			title: "Hidden Users",
 			back: "/settings/account",
 		},
+		[`${base}/account/contacts`]: {
+			title: "Backup & Restore Contacts",
+			back: "/settings/account",
+		},
 		[`${base}/albums`]: {
 			title: "My Albums",
 			back: "/settings",

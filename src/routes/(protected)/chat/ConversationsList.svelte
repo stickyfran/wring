@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { goto } from "$app/navigation";
-	import { page } from "$app/state";
 	import { onDestroy, tick } from "svelte";
 
+	import { page } from "$app/state";
 	import { getConversations } from "$lib/chat/conversations-context.svelte";
 	import ApiErrorDisplay from "$lib/components/feedback/ApiErrorDisplay.svelte";
 	import DataRefreshControl from "$lib/components/feedback/DataRefreshControl.svelte";
@@ -10,6 +9,7 @@
 	import Skeleton from "$lib/components/ui/skeleton/skeleton.svelte";
 	import { dismissOnBackGesture } from "$lib/platform/back-gesture-event.svelte";
 	import { below } from "$lib/util/breakpoints.svelte";
+	import { leaveDeletedPages } from "$lib/util/deleted-pages";
 	import { restoreScrollOnce } from "$lib/util/scroll-restore.svelte";
 	import { SelectionSet } from "$lib/util/selection.svelte";
 	import type { ConversationsState } from "$lib/chat/conversations-state.svelte";
@@ -124,7 +124,11 @@
 		}
 	});
 
-	dismissOnBackGesture({ active: () => selecting, dismiss: exitSelection });
+	dismissOnBackGesture({
+		active: () => selecting,
+		dismiss: exitSelection,
+		layer: "screen",
+	});
 	dismissOnBackGesture({
 		active: () => deleteDialogOpen,
 		dismiss: () => {
@@ -151,11 +155,12 @@
 		deleteDialogOpen = true;
 	}
 
-	async function confirmDelete() {
+	function confirmDelete() {
 		exitSelection();
-		if (deleteIds.some((id) => id === page.params.conversationId)) {
-			await goto("/chat");
-		}
+		leaveDeletedPages({
+			pathnames: deleteIds.map((id) => `/chat/${id}`),
+			parent: "/chat",
+		});
 		const known = new Set(
 			conversations.entries.map((entry) => entry.data.conversationId),
 		);
@@ -179,7 +184,7 @@
 <DeleteConversationsDialog
 	bind:open={deleteDialogOpen}
 	count={deleteIds.length}
-	onConfirm={() => void confirmDelete()}
+	onConfirm={confirmDelete}
 />
 
 <div class="flex h-full w-full min-w-list-rail flex-col">

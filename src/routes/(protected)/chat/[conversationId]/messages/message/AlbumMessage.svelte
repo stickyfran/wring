@@ -14,7 +14,13 @@
 	import { mediaRenewal } from "./media-renewal";
 	import { MessageMediaState } from "./message-media.svelte";
 
-	let { message }: { message: AlbumMessage["body"] } = $props();
+	let {
+		message,
+		isOut = false,
+	}: {
+		message: AlbumMessage["body"];
+		isOut?: boolean;
+	} = $props();
 
 	const media = new MessageMediaState();
 	const renewMedia = mediaRenewal();
@@ -46,9 +52,9 @@
 
 	const className: import("svelte/elements").ClassValue = $derived([
 		"aspect-3/4 h-auto",
+		media.widthClass,
 		{
 			"ring ring-accent": message.hasUnseenContent,
-			"w-2/5 min-w-35 max-w-60 ms-3": !media.clone,
 			"size-full": media.clone,
 		},
 	]);
@@ -69,6 +75,7 @@
 		{contentClass}
 		attach={media.attach}
 		onexpired={renewMedia}
+		allowDownload={!isOut}
 	>
 		{#if !isViewable}
 			<div

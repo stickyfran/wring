@@ -41,6 +41,9 @@
 		}
 
 		for (const msg of conversationState.messages) {
+			if (msg.senderId === conversationState.ourProfileId) {
+				continue;
+			}
 			if (msg.type === "Image") {
 				const bodyWithHash = msg.body as { url?: string | null; imageHash?: string };
 				if (msg.body.url) {

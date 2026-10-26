@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { goto } from "$app/navigation";
 	import DotsThreeVerticalIcon from "phosphor-svelte/lib/DotsThreeVerticalIcon";
 	import TrashIcon from "phosphor-svelte/lib/TrashIcon";
 	import { toast } from "svelte-sonner";
@@ -10,7 +9,7 @@
 	import * as AlertDialog from "$lib/components/ui/alert-dialog";
 	import { Button } from "$lib/components/ui/button";
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
-	import { traverseBackTo } from "$lib/util/history";
+	import { leaveDeletedPages } from "$lib/util/deleted-pages";
 
 	let {
 		albumId,
@@ -27,8 +26,10 @@
 			await deleteAlbum({ albumId });
 			getMyAlbumsState(ourProfileId).remove(albumId);
 			toast.success("Your album has been deleted");
-			if (!traverseBackTo("/settings/albums"))
-				await goto("/settings/albums", { replaceState: true });
+			leaveDeletedPages({
+				pathnames: [`/settings/albums/${albumId}`],
+				parent: "/settings/albums",
+			});
 		} catch (error) {
 			console.error(error);
 			showErrorToast({ label: "Couldn't delete album", error });

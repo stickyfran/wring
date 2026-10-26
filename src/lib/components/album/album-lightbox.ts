@@ -235,11 +235,13 @@ export function openAlbumLightbox({
 	slides,
 	signal,
 	onClosed,
+	allowDownload = true,
 }: {
 	albumId: number;
 	slides: AlbumSlide[];
 	signal: AbortSignal;
 	onClosed: () => void;
+	allowDownload?: boolean;
 }): Promise<void> {
 	const items = slides.map(({ url, width, height }) => ({
 		src: url,
@@ -261,7 +263,9 @@ export function openAlbumLightbox({
 		items,
 		videoAt,
 		configure: (lightbox) => {
-			applyPhotoSwipeDownloadButton(lightbox, videoAt);
+			if (allowDownload) {
+				applyPhotoSwipeDownloadButton(lightbox, videoAt);
+			}
 			lightbox.on("loadError", ({ content }) => {
 				void renew({
 					index: content.index,

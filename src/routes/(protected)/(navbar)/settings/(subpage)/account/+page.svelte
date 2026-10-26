@@ -62,4 +62,8 @@
 	href: "/settings/account/blocked",
 })}
 {@render linkItem({ title: "Hidden users", href: "/settings/account/hidden" })}
+{@render linkItem({
+	title: "Backup & Restore Contacts",
+	href: "/settings/account/contacts",
+})}
 {@render item({ title: "Delete account" })}

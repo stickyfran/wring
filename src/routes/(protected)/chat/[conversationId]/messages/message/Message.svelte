@@ -20,6 +20,8 @@
 	import AlbumMessage from "./AlbumMessage.svelte";
 	import { type MessageRefs, setMessageContext } from "./context";
 	import ExpiringImageMessage from "./ExpiringImageMessage.svelte";
+	import GaymojiMessage from "./GaymojiMessage.svelte";
+	import GiphyMessage from "./GiphyMessage.svelte";
 	import ImageMessage from "./ImageMessage.svelte";
 	import LocationMessage from "./LocationMessage.svelte";
 	import MessageContextMenu from "./MessageContextMenu.svelte";
@@ -262,7 +264,7 @@
 		{#if message.type === "Text"}
 			<TextMessage message={message.body} />
 		{:else if message.type === "Image"}
-			<ImageMessage message={message.body} />
+			<ImageMessage message={message.body} {isOut} />
 		{:else if message.type === "ExpiringImage"}
 			<ExpiringImageMessage
 				message={message.body}
@@ -271,7 +273,7 @@
 				{isOut}
 			/>
 		{:else if message.type === "Album" || message.type === "ExpiringAlbum" || message.type === "ExpiringAlbumV2"}
-			<AlbumMessage message={message.body} />
+			<AlbumMessage message={message.body} {isOut} />
 		{:else if message.type === "Video" || message.type === "PrivateVideo"}
 			<VideoMessage
 				message={message.body}
@@ -280,6 +282,10 @@
 				delivered={status !== "pending" && status !== "error"}
 				{isOut}
 			/>
+		{:else if message.type === "Gaymoji"}
+			<GaymojiMessage message={message.body} />
+		{:else if message.type === "Giphy"}
+			<GiphyMessage message={message.body} {isOut} />
 		{:else if message.type === "Unsent"}
 			<UnsentMessage />
 		{:else if message.type === "Location"}

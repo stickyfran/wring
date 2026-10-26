@@ -26,6 +26,7 @@
 		contentClass,
 		attach = () => {},
 		onexpired,
+		allowDownload = true,
 		children,
 	}: {
 		albumId: number;
@@ -37,6 +38,7 @@
 		contentClass?: ClassValue;
 		attach?: Attachment<HTMLElement>;
 		onexpired?: () => Promise<void>;
+		allowDownload?: boolean;
 		children?: Snippet;
 	} = $props();
 
@@ -88,6 +90,7 @@
 			slides,
 			signal: controller.signal,
 			onClosed: () => (preview = { status: "idle" }),
+			allowDownload,
 		}).catch((error: unknown) => {
 			if (controller.signal.aborted) return;
 			console.error(error);

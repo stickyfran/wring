@@ -9,12 +9,18 @@ mod desktop_entry;
 mod error;
 mod haptics;
 mod hex;
+#[cfg(target_os = "android")]
+mod keyboard_media;
 pub mod media;
+#[cfg(target_os = "android")]
+mod media_drag;
 mod media_picker;
 mod photo;
 #[cfg(test)]
 mod pin_support;
 mod plugin_rejection;
+#[cfg(target_os = "macos")]
+mod predecessor;
 #[cfg(any(target_os = "android", test))]
 mod push_poll;
 mod scroll_phase;
@@ -35,7 +41,6 @@ const MIN_CHROMIUM_MAJOR: u32 = 111;
 #[cfg(target_os = "linux")]
 const MIN_WEBKITGTK: (u32, u32) = (2, 42);
 
-#[cfg(desktop)]
 pub(crate) const MAIN_WINDOW_LABEL: &str = "main";
 
 const OPEN_GRIND_PLATFORM: &str = if cfg!(target_os = "android") {
@@ -128,6 +133,8 @@ pub fn run() {
 	appearance::apply_environment_defaults();
 
 	api::update::enforce_home();
+	#[cfg(target_os = "macos")]
+	predecessor::adopt_data();
 
 	#[cfg(feature = "devtools")]
 	let devtools = tauri_plugin_devtools::init();
@@ -151,6 +158,8 @@ pub fn run() {
 	let builder = builder
 		.plugin(tauri_plugin_android_fs::init())
 		.plugin(photo::plugin())
+		.plugin(keyboard_media::plugin())
+		.plugin(media_drag::plugin())
 		.plugin(api::recaptcha::plugin())
 		.plugin(app_origin::android::plugin());
 
@@ -213,10 +222,16 @@ pub fn run() {
             api::push::push_watch,
             storage::storage_backend,
             api::rest::request,
+            api::rest::fetch_external,
             media::media_failure,
             upload::bytes::upload_media,
             upload::inspect::inspect_media_file,
+            upload::preview::preview_media,
             upload::file::upload_media_file,
+            upload::staged::stage_media,
+            upload::staged::append_staged_media,
+            upload::staged::discard_staged_media,
+            upload::linked::stage_linked_media,
             api::ws::ws_connect,
             api::ws::ws_reconnect,
             api::ws::ws_send,
@@ -245,6 +260,7 @@ pub fn run() {
             app_settings::open_app_settings,
             media_picker::pick_android_media,
             appearance::backdrop_filter_renders,
+            appearance::webview_engine,
             app_data::read_app_data,
             app_data::write_app_data,
             app_data::remove_app_data,
@@ -253,6 +269,7 @@ pub fn run() {
             scroll_phase::install_scroll_gesture_bridge(app.handle());
             #[cfg(target_os = "android")]
             app_origin::android::prepare_served_origin(app.handle());
+            upload::staged::discard_all(app.handle());
             let user_agent = format!(
                 "open-grind/{} (+https://opengrind.org/; contact: admin@opengrind.org)",
                 app.package_info().version
@@ -272,6 +289,8 @@ pub fn run() {
                         .on_navigation(|url| {
                             app_origin::is_app_url(url, app_origin::SERVED_HOSTNAME)
                         });
+                #[cfg(any(target_os = "macos", target_os = "windows"))]
+                let builder = builder.disable_drag_drop_handler();
                 #[cfg(target_os = "linux")]
                 let builder = builder.extensions_path(
                     app.path().resource_dir()?.join(media::WEBKIT_EXTENSIONS),
@@ -279,6 +298,8 @@ pub fn run() {
                 let window = builder.build()?;
                 #[cfg(target_os = "linux")]
                 media::serve_element_opens(&window);
+                #[cfg(target_os = "linux")]
+                scroll_phase::follow_touchpad(&window);
                 appearance::unlock_visual_effects(&window);
                 context_menu::trim_native_menu(&window);
                 #[cfg(desktop)]
@@ -301,7 +322,12 @@ pub fn run() {
             ))]
             storage::init_file_store(app.path().app_local_data_dir()?);
 
-            app.manage(storage::init_keyring());
+            let backend = storage::init_keyring();
+            #[cfg(all(target_os = "macos", feature = "keychain"))]
+            if backend == storage::StorageBackend::Keyring {
+                storage::adopt_legacy_items();
+            }
+            app.manage(backend);
 
             let device = DeviceStorage::load_or_create();
 
@@ -466,6 +492,7 @@ mod webview_floor_pins {
 mod frontend_method_pins {
 	const THIS: &str = include_str!("lib.rs");
 	const METHODS: &str = include_str!("../../src/lib/api/methods.ts");
+	const TRANSPORT: &str = include_str!("../../src/lib/api/transport.ts");
 
 	fn between<'a>(haystack: &'a str, open: &str, close: &str) -> &'a str {
 		let start = haystack.find(open).expect(open) + open.len();
@@ -473,13 +500,34 @@ mod frontend_method_pins {
 		&haystack[start..start + len]
 	}
 
+	fn registered_commands() -> Vec<&'static str> {
+		between(THIS, "tauri::generate_handler![", "])")
+			.split(',')
+			.filter_map(|entry| entry.trim().rsplit("::").next())
+			.collect()
+	}
+
+	#[test]
+	fn every_command_the_transport_invokes_is_registered() {
+		let registered = registered_commands();
+		let invoked: Vec<&str> = ["invoke(\"", "invokeRest(\""]
+			.into_iter()
+			.flat_map(|opener| TRANSPORT.split(opener).skip(1))
+			.filter_map(|rest| rest.split_once('"'))
+			.map(|(command, _)| command)
+			.collect();
+		assert!(invoked.contains(&"fetch_external"), "{invoked:?}");
+		for command in invoked {
+			assert!(
+				registered.contains(&command),
+				"{command} is invoked by transport.ts but not registered"
+			);
+		}
+	}
+
 	#[test]
 	fn every_frontend_method_is_a_registered_command() {
-		let registered: Vec<&str> =
-			between(THIS, "tauri::generate_handler![", "])")
-				.split(',')
-				.filter_map(|entry| entry.trim().rsplit("::").next())
-				.collect();
+		let registered = registered_commands();
 		let methods: Vec<&str> =
 			between(METHODS, "export const methods = {", "\n}")
 				.lines()

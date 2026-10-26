@@ -1,3 +1,5 @@
+/* eslint max-lines: ["error", { "max": 602, "skipBlankLines": true, "skipComments": true }] -- Keep the fetch snapshot beside its reconciliation. */
+
 import { createContext } from "svelte";
 
 import { showErrorToast } from "$lib/api/error-toast";
@@ -26,7 +28,6 @@ import type { ConversationsState } from "$lib/chat/conversations-state.svelte";
 import type {
 	ApiResponseMessage,
 	MessageDraft,
-	OutboundMessage,
 } from "$lib/model/messaging/messages";
 import { DynamicMessagesRefresh } from "./dynamic-refresh";
 import {
@@ -52,7 +53,7 @@ function asSent(message: ApiResponseMessage): OptimisticMessage {
 
 type MessageDelivery = {
 	tempId: string;
-	message: OutboundMessage;
+	message: MessageDraft["outbound"];
 	replyToMessageId?: string;
 };
 
@@ -82,6 +83,7 @@ export class ConversationState {
 	readonly ourProfileId: number;
 
 	#conversations: ConversationsState;
+	#releaseActive: () => void;
 	#readReceipts = new ReadReceiptQueue({
 		markRead: (messageId) => this.#markRead(messageId),
 	});
@@ -100,7 +102,7 @@ export class ConversationState {
 		this.conversationId = conversationId;
 		this.ourProfileId = ourProfileId;
 		this.#conversations = conversations;
-		conversations.setActive(conversationId);
+		this.#releaseActive = conversations.setActive(conversationId);
 		void this.#initialLoad();
 
 		this.#unsubscribeReconcile = reconciler.subscribe(() =>
@@ -206,7 +208,7 @@ export class ConversationState {
 	destroy(): void {
 		if (this.#destroyed) return;
 		this.#destroyed = true;
-		this.#conversations.clearActive(this.conversationId);
+		this.#releaseActive();
 		stopListening(this.#wsPromises);
 		this.#wsPromises = [];
 		this.#unsubscribeReconcile();
@@ -222,6 +224,7 @@ export class ConversationState {
 		}
 		this.refreshing = true;
 		this.#refreshRequestedSinceFetchStart = false;
+		const localIdsAtFetchStart = this.messages.map((m) => m.messageId);
 		try {
 			const result = await getConversation({
 				conversationId: this.conversationId,
@@ -234,6 +237,7 @@ export class ConversationState {
 			const { messages, fresh, changed } = mergeServerMessages({
 				local: this.messages,
 				server: result.messages,
+				localIdsAtFetchStart,
 			});
 
 			this.#advanceLastRead(result.lastReadTimestamp);
@@ -461,6 +465,7 @@ export class ConversationState {
 			);
 			if (
 				!this.#destroyed &&
+				typeof delivery.message !== "function" &&
 				delivery.message.type === "ExpiringImage" &&
 				urn === "urn:gr:err:entitlement_limit"
 			) {
